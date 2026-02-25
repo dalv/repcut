@@ -6,6 +6,7 @@ struct TimelineView: View {
     let duration: Double
     let markers: [ClipMarker]
     let thumbnails: [UIImage]
+    var playheadColor: Color = .accent
     var onSeek: (Double) -> Void
 
     private let thumbHeight: CGFloat = 60
@@ -33,20 +34,20 @@ struct TimelineView: View {
             VStack(spacing: 0) {
                 // Top handle
                 Capsule()
-                    .fill(Color.accent)
+                    .fill(playheadColor)
                     .frame(width: 14, height: 5)
 
                 // Line
                 Rectangle()
-                    .fill(Color.accent)
+                    .fill(playheadColor)
                     .frame(width: 2.5, height: thumbHeight)
 
                 // Bottom handle
                 Capsule()
-                    .fill(Color.accent)
+                    .fill(playheadColor)
                     .frame(width: 14, height: 5)
             }
-            .shadow(color: .accent.opacity(0.4), radius: 4, y: 0)
+            .shadow(color: playheadColor.opacity(0.4), radius: 4, y: 0)
             .allowsHitTesting(false)
         }
         .frame(height: thumbHeight + 18)

@@ -21,6 +21,8 @@ struct ContentView: View {
     @State private var thumbnails: [UIImage] = []
     @State private var videoAspectRatio: CGFloat = 16.0 / 9.0
 
+    @State private var sourcePhAsset: PHAsset?
+
     @State private var isLoadingVideo = false
     @State private var showPicker = false
     @State private var isExporting = false
@@ -28,6 +30,8 @@ struct ContentView: View {
     @State private var showAlert = false
     @State private var alertTitle = ""
     @State private var alertMessage = ""
+    @State private var showDeletePrompt = false
+    @State private var exportedClipCount = 0
 
     var body: some View {
         NavigationStack {
@@ -53,8 +57,8 @@ struct ContentView: View {
                         ToolbarItem(placement: .topBarTrailing) {
                             if duration > 0 {
                                 Text(ClipMarker.formatTime(duration))
-                                    .font(.system(.caption2, design: .monospaced))
-                                    .foregroundStyle(.tertiary)
+                                    .font(.custom("HelveticaNeue-Light", size: 12))
+                                    .foregroundStyle(.secondary)
                             }
                         }
                     }
@@ -76,6 +80,14 @@ struct ContentView: View {
             Button("OK") { }
         } message: {
             Text(alertMessage)
+        }
+        .alert("Clips Saved!", isPresented: $showDeletePrompt) {
+            Button("Delete Original", role: .destructive) {
+                deleteOriginalVideo()
+            }
+            Button("Keep Original", role: .cancel) { }
+        } message: {
+            Text("\(exportedClipCount) clip\(exportedClipCount == 1 ? "" : "s") saved to your photo library. Delete the original video to free up space?")
         }
     }
 
@@ -190,16 +202,14 @@ struct ContentView: View {
                     .frame(width: 50, height: 32)
                     .background(
                         Capsule()
-                            .fill(Color(.tertiarySystemFill))
+                            .fill(Color(UIColor.tertiarySystemFill))
                     )
                 }
 
-                VStack(spacing: 2) {
-                    Text(ClipMarker.formatTime(currentTime))
-                        .font(.system(size: 28, weight: .medium, design: .monospaced))
-                        .foregroundStyle(.primary)
-                        .contentTransition(.numericText())
-                }
+                Text(ClipMarker.formatTime(currentTime))
+                    .font(.custom("HelveticaNeue-Light", size: 30))
+                    .foregroundStyle(.primary)
+                    .contentTransition(.numericText())
 
                 Button {
                     scrub(by: 1)
@@ -214,7 +224,7 @@ struct ContentView: View {
                     .frame(width: 50, height: 32)
                     .background(
                         Capsule()
-                            .fill(Color(.tertiarySystemFill))
+                            .fill(Color(UIColor.tertiarySystemFill))
                     )
                 }
             }
@@ -227,6 +237,7 @@ struct ContentView: View {
                 duration: duration,
                 markers: markers,
                 thumbnails: thumbnails,
+                playheadColor: playheadColor,
                 onSeek: { time in
                     player.seek(
                         to: CMTime(seconds: time, preferredTimescale: 600),
@@ -293,6 +304,14 @@ struct ContentView: View {
         markers.filter { $0.isComplete }.count
     }
 
+    private var playheadColor: Color {
+        let colors: [Color] = [.accent, .green, .orange, .purple, .pink, .cyan]
+        guard !markers.isEmpty else { return .accent }
+        // If the last marker is in-progress, reflect its clip color; otherwise default to accent
+        guard let last = markers.last, !last.isComplete else { return .accent }
+        return colors[(markers.count - 1) % colors.count]
+    }
+
     private func scrub(by seconds: Double) {
         guard duration > 0 else { return }
         let newTime = max(0, min(duration, currentTime + seconds))
@@ -315,6 +334,8 @@ struct ContentView: View {
             showAlert = true
             return
         }
+
+        self.sourcePhAsset = phAsset
 
         let options = PHVideoRequestOptions()
         options.isNetworkAccessAllowed = true
@@ -418,9 +439,8 @@ struct ContentView: View {
                 }
                 await MainActor.run {
                     isExporting = false
-                    alertTitle = "Done!"
-                    alertMessage = "\(count) clip\(count == 1 ? "" : "s") saved to your photo library."
-                    showAlert = true
+                    exportedClipCount = count
+                    showDeletePrompt = true
                 }
             } catch {
                 await MainActor.run {
@@ -433,6 +453,24 @@ struct ContentView: View {
         }
     }
 
+    private func deleteOriginalVideo() {
+        guard let phAsset = sourcePhAsset else { return }
+        PHPhotoLibrary.shared().performChanges({
+            PHAssetChangeRequest.deleteAssets([phAsset] as NSArray)
+        }) { success, error in
+            DispatchQueue.main.async {
+                if success {
+                    self.alertTitle = "Deleted"
+                    self.alertMessage = "The original video has been deleted."
+                } else {
+                    self.alertTitle = "Error"
+                    self.alertMessage = error?.localizedDescription ?? "Could not delete the original video."
+                }
+                self.showAlert = true
+            }
+        }
+    }
+
     private func resetState() {
         if let old = timeObserver {
             player?.removeTimeObserver(old)
@@ -441,6 +479,7 @@ struct ContentView: View {
         player?.pause()
         player = nil
         videoAsset = nil
+        sourcePhAsset = nil
         markers = []
         currentTime = 0
         duration = 0

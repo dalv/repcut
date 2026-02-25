@@ -10,7 +10,7 @@ struct MarkerEditorView: View {
             HStack(spacing: 10) {
                 Button(action: markStart) {
                     Label {
-                        Text("Mark In")
+                        Text("Start clip")
                             .font(.system(.subheadline, weight: .semibold))
                     } icon: {
                         Image(systemName: "arrow.right.to.line")
@@ -20,13 +20,13 @@ struct MarkerEditorView: View {
                     .foregroundColor(.white)
                     .background(
                         RoundedRectangle(cornerRadius: 12, style: .continuous)
-                            .fill(Color(red: 0.22, green: 0.78, blue: 0.45))
+                            .fill(markerColor(for: nextClipIndex))
                     )
                 }
 
                 Button(action: markEnd) {
                     Label {
-                        Text("Mark Out")
+                        Text("End clip")
                             .font(.system(.subheadline, weight: .semibold))
                     } icon: {
                         Image(systemName: "arrow.left.to.line")
@@ -36,7 +36,7 @@ struct MarkerEditorView: View {
                     .foregroundColor(.white)
                     .background(
                         RoundedRectangle(cornerRadius: 12, style: .continuous)
-                            .fill(canMarkEnd ? Color(red: 0.94, green: 0.33, blue: 0.31) : Color.gray.opacity(0.3))
+                            .fill(canMarkEnd ? markerColor(for: markers.count - 1) : Color.gray.opacity(0.3))
                     )
                 }
                 .disabled(!canMarkEnd)
@@ -47,7 +47,7 @@ struct MarkerEditorView: View {
                 HStack {
                     Image(systemName: "hand.draw")
                         .foregroundStyle(.quaternary)
-                    Text("Scrub to a position and tap Mark In")
+                    Text("Scrub to a position and tap Start clip")
                         .font(.system(.footnote, weight: .regular))
                         .foregroundStyle(.tertiary)
                 }
@@ -67,7 +67,7 @@ struct MarkerEditorView: View {
                                         .font(.system(.subheadline, weight: .semibold))
 
                                     Text(marker.formattedRange())
-                                        .font(.system(.caption, design: .monospaced, weight: .regular))
+                                        .font(.custom("HelveticaNeue-Light", size: 12))
                                         .foregroundStyle(.secondary)
                                 }
 
@@ -116,6 +116,14 @@ struct MarkerEditorView: View {
     private var canMarkEnd: Bool {
         guard let last = markers.last else { return false }
         return last.end == nil
+    }
+
+    // Index the next clip will get (used to color the action buttons)
+    private var nextClipIndex: Int {
+        if let last = markers.last, !last.isComplete {
+            return markers.count - 1  // will replace the incomplete marker
+        }
+        return markers.count  // will append a new one
     }
 
     private func markStart() {
