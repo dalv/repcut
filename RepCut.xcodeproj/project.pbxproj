@@ -15,6 +15,7 @@
 		A10000010000000000000006 /* VideoExporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000020000000000000006 /* VideoExporter.swift */; };
 		A10000010000000000000007 /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000020000000000000007 /* Models.swift */; };
 		A10000010000000000000008 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A10000020000000000000008 /* Assets.xcassets */; };
+		A10000010000000000000009 /* ThumbnailGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000002000000000000000A /* ThumbnailGenerator.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -27,6 +28,7 @@
 		A10000020000000000000007 /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
 		A10000020000000000000008 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		A10000020000000000000009 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		A1000002000000000000000A /* ThumbnailGenerator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThumbnailGenerator.swift; sourceTree = "<group>"; };
 		A10000030000000000000001 /* RepCut.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = RepCut.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -59,6 +61,7 @@
 				A10000020000000000000005 /* MarkerEditorView.swift */,
 				A10000020000000000000006 /* VideoExporter.swift */,
 				A10000020000000000000007 /* Models.swift */,
+				A1000002000000000000000A /* ThumbnailGenerator.swift */,
 				A10000020000000000000008 /* Assets.xcassets */,
 				A10000020000000000000009 /* Info.plist */,
 			);
@@ -149,6 +152,7 @@
 				A10000010000000000000005 /* MarkerEditorView.swift in Sources */,
 				A10000010000000000000006 /* VideoExporter.swift in Sources */,
 				A10000010000000000000007 /* Models.swift in Sources */,
+				A10000010000000000000009 /* ThumbnailGenerator.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -279,7 +283,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = LFDA33NSY8;
+				DEVELOPMENT_TEAM = 4LS33XMVRM;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = RepCut/Info.plist;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -307,7 +311,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = LFDA33NSY8;
+				DEVELOPMENT_TEAM = 4LS33XMVRM;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = RepCut/Info.plist;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;

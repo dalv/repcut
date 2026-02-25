@@ -7,50 +7,108 @@ struct MarkerEditorView: View {
     var body: some View {
         VStack(spacing: 12) {
             // Action buttons
-            HStack(spacing: 16) {
+            HStack(spacing: 10) {
                 Button(action: markStart) {
-                    Label("Mark Start", systemImage: "arrow.right.to.line")
-                        .frame(maxWidth: .infinity)
+                    Label {
+                        Text("Mark In")
+                            .font(.system(.subheadline, weight: .semibold))
+                    } icon: {
+                        Image(systemName: "arrow.right.to.line")
+                            .font(.system(size: 12, weight: .bold))
+                    }
+                    .frame(maxWidth: .infinity, minHeight: 44)
+                    .foregroundColor(.white)
+                    .background(
+                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                            .fill(Color(red: 0.22, green: 0.78, blue: 0.45))
+                    )
                 }
-                .buttonStyle(.borderedProminent)
-                .tint(.green)
 
                 Button(action: markEnd) {
-                    Label("Mark End", systemImage: "arrow.left.to.line")
-                        .frame(maxWidth: .infinity)
+                    Label {
+                        Text("Mark Out")
+                            .font(.system(.subheadline, weight: .semibold))
+                    } icon: {
+                        Image(systemName: "arrow.left.to.line")
+                            .font(.system(size: 12, weight: .bold))
+                    }
+                    .frame(maxWidth: .infinity, minHeight: 44)
+                    .foregroundColor(.white)
+                    .background(
+                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                            .fill(canMarkEnd ? Color(red: 0.94, green: 0.33, blue: 0.31) : Color.gray.opacity(0.3))
+                    )
                 }
-                .buttonStyle(.borderedProminent)
-                .tint(.red)
                 .disabled(!canMarkEnd)
             }
 
             // Marker list
             if markers.isEmpty {
-                Text("Scrub to a position and tap \"Mark Start\" to begin")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-                    .padding(.vertical, 8)
+                HStack {
+                    Image(systemName: "hand.draw")
+                        .foregroundStyle(.quaternary)
+                    Text("Scrub to a position and tap Mark In")
+                        .font(.system(.footnote, weight: .regular))
+                        .foregroundStyle(.tertiary)
+                }
+                .padding(.vertical, 8)
             } else {
-                List {
-                    ForEach(Array(markers.enumerated()), id: \.element.id) { index, marker in
-                        HStack {
-                            Circle()
-                                .fill(markerColor(for: index))
-                                .frame(width: 10, height: 10)
-                            Text("Clip \(index + 1)")
-                                .fontWeight(.medium)
-                            Spacer()
-                            Text(marker.formattedRange())
-                                .font(.system(.body, design: .monospaced))
-                                .foregroundStyle(.secondary)
+                ScrollView(.vertical, showsIndicators: false) {
+                    VStack(spacing: 8) {
+                        ForEach(Array(markers.enumerated()), id: \.element.id) { index, marker in
+                            HStack(spacing: 12) {
+                                // Color accent bar
+                                RoundedRectangle(cornerRadius: 2)
+                                    .fill(markerColor(for: index))
+                                    .frame(width: 4, height: 32)
+
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text("Clip \(index + 1)")
+                                        .font(.system(.subheadline, weight: .semibold))
+
+                                    Text(marker.formattedRange())
+                                        .font(.system(.caption, design: .monospaced, weight: .regular))
+                                        .foregroundStyle(.secondary)
+                                }
+
+                                Spacer()
+
+                                // Status indicator
+                                if marker.isComplete {
+                                    Image(systemName: "checkmark.circle.fill")
+                                        .font(.system(size: 16))
+                                        .foregroundStyle(.green.opacity(0.7))
+                                } else {
+                                    Text("...")
+                                        .font(.system(.caption, design: .monospaced, weight: .bold))
+                                        .foregroundStyle(.orange)
+                                }
+
+                                Button {
+                                    withAnimation(.easeOut(duration: 0.2)) {
+                                        markers.removeAll { $0.id == marker.id }
+                                    }
+                                } label: {
+                                    Image(systemName: "trash")
+                                        .font(.system(size: 12, weight: .medium))
+                                        .foregroundStyle(.secondary.opacity(0.6))
+                                        .frame(width: 32, height: 32)
+                                        .background(
+                                            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                                .fill(Color(UIColor.tertiarySystemFill))
+                                        )
+                                }
+                            }
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 10)
+                            .background(
+                                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                    .fill(Color(UIColor.secondarySystemGroupedBackground))
+                            )
                         }
                     }
-                    .onDelete { indexSet in
-                        markers.remove(atOffsets: indexSet)
-                    }
                 }
-                .listStyle(.plain)
-                .frame(maxHeight: CGFloat(markers.count) * 50)
+                .frame(maxHeight: CGFloat(min(markers.count, 4)) * 68)
             }
         }
     }
@@ -61,7 +119,6 @@ struct MarkerEditorView: View {
     }
 
     private func markStart() {
-        // If the last marker is incomplete, remove it before adding a new one
         if let last = markers.last, !last.isComplete {
             markers.removeLast()
         }
@@ -77,7 +134,7 @@ struct MarkerEditorView: View {
     }
 
     private func markerColor(for index: Int) -> Color {
-        let colors: [Color] = [.blue, .green, .orange, .purple, .pink, .cyan]
+        let colors: [Color] = [.accent, .green, .orange, .purple, .pink, .cyan]
         return colors[index % colors.count]
     }
 }

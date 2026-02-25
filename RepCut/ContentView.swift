@@ -3,6 +3,14 @@ import PhotosUI
 import AVKit
 import Photos
 
+// MARK: - Accent Color
+// Using ShapeStyle where Self == Color so .accent resolves in all SwiftUI style contexts
+
+extension ShapeStyle where Self == Color {
+    static var accent: Color { Color(red: 0.38, green: 0.40, blue: 0.95) }
+    static var accentLight: Color { Color(red: 0.55, green: 0.56, blue: 1.0) }
+}
+
 struct ContentView: View {
     @State private var videoAsset: AVAsset?
     @State private var player: AVPlayer?
@@ -10,6 +18,8 @@ struct ContentView: View {
     @State private var currentTime: Double = 0
     @State private var markers: [ClipMarker] = []
     @State private var timeObserver: Any?
+    @State private var thumbnails: [UIImage] = []
+    @State private var videoAspectRatio: CGFloat = 16.0 / 9.0
 
     @State private var isLoadingVideo = false
     @State private var showPicker = false
@@ -23,20 +33,38 @@ struct ContentView: View {
         NavigationStack {
             if let player = player {
                 editorView(player: player)
+                    .background(Color(.systemGroupedBackground))
                     .navigationTitle("RepCut")
                     .navigationBarTitleDisplayMode(.inline)
                     .toolbar {
                         ToolbarItem(placement: .topBarLeading) {
-                            Button("New Video") {
+                            Button {
                                 resetState()
+                            } label: {
+                                HStack(spacing: 4) {
+                                    Image(systemName: "chevron.left")
+                                        .font(.system(size: 14, weight: .semibold))
+                                    Text("Back")
+                                        .font(.system(size: 16, weight: .regular))
+                                }
+                                .foregroundStyle(.accent)
+                            }
+                        }
+                        ToolbarItem(placement: .topBarTrailing) {
+                            if duration > 0 {
+                                Text(ClipMarker.formatTime(duration))
+                                    .font(.system(.caption2, design: .monospaced))
+                                    .foregroundStyle(.tertiary)
                             }
                         }
                     }
             } else {
                 pickerView
-                    .navigationTitle("RepCut")
+                    .navigationTitle("")
+                    .navigationBarHidden(true)
             }
         }
+        .tint(.accent)
         .sheet(isPresented: $showPicker) {
             VideoPicker { assetIdentifier in
                 if let assetIdentifier = assetIdentifier {
@@ -54,30 +82,82 @@ struct ContentView: View {
     // MARK: - Picker View
 
     private var pickerView: some View {
-        VStack(spacing: 24) {
-            Spacer()
-            Image(systemName: "scissors")
-                .font(.system(size: 64))
-                .foregroundStyle(.secondary)
-            Text("Select a video to split into clips")
-                .font(.title3)
-                .foregroundStyle(.secondary)
-            Button {
-                showPicker = true
-            } label: {
-                Label("Choose Video", systemImage: "photo.on.rectangle")
-                    .font(.headline)
-                    .frame(width: 200, height: 50)
-            }
-            .buttonStyle(.borderedProminent)
-            .disabled(isLoadingVideo)
+        ZStack {
+            // Subtle gradient background
+            LinearGradient(
+                colors: [
+                    Color(.systemBackground),
+                    Color(.systemGroupedBackground)
+                ],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            .ignoresSafeArea()
 
-            if isLoadingVideo {
-                ProgressView()
-                    .padding(.top, 8)
-            }
+            VStack(spacing: 40) {
+                Spacer()
 
-            Spacer()
+                VStack(spacing: 20) {
+                    // App icon area
+                    ZStack {
+                        Circle()
+                            .fill(
+                                LinearGradient(
+                                    colors: [.accent.opacity(0.15), .accent.opacity(0.05)],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                            )
+                            .frame(width: 96, height: 96)
+
+                        Image(systemName: "scissors")
+                            .font(.system(size: 36, weight: .light))
+                            .foregroundStyle(.accent)
+                    }
+
+                    VStack(spacing: 6) {
+                        Text("RepCut")
+                            .font(.system(size: 32, weight: .bold, design: .rounded))
+
+                        Text("Split your video into clips")
+                            .font(.system(.subheadline, weight: .regular))
+                            .foregroundStyle(.secondary)
+                    }
+                }
+
+                Button {
+                    showPicker = true
+                } label: {
+                    HStack(spacing: 10) {
+                        Image(systemName: "video.badge.plus")
+                            .font(.system(size: 16, weight: .medium))
+                        Text("Choose Video")
+                            .font(.system(.body, weight: .semibold))
+                    }
+                    .foregroundColor(.white)
+                    .frame(width: 220, height: 54)
+                    .background(
+                        RoundedRectangle(cornerRadius: 16, style: .continuous)
+                            .fill(
+                                LinearGradient(
+                                    colors: [.accent, .accentLight],
+                                    startPoint: .leading,
+                                    endPoint: .trailing
+                                )
+                            )
+                    )
+                    .shadow(color: .accent.opacity(0.3), radius: 12, y: 6)
+                }
+                .disabled(isLoadingVideo)
+
+                if isLoadingVideo {
+                    ProgressView()
+                        .tint(.accent)
+                }
+
+                Spacer()
+                Spacer()
+            }
         }
     }
 
@@ -87,59 +167,122 @@ struct ContentView: View {
         VStack(spacing: 0) {
             // Video player
             VideoPlayerView(player: player)
-                .frame(height: 250)
-                .background(Color.black)
+                .frame(maxWidth: .infinity)
+                .aspectRatio(videoAspectRatio, contentMode: .fit)
+                .frame(maxHeight: 320)
+                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .shadow(color: .black.opacity(0.08), radius: 12, y: 4)
+                .padding(.horizontal, 16)
+                .padding(.top, 8)
 
-            VStack(spacing: 12) {
-                // Current time display
-                Text(ClipMarker.formatTime(currentTime))
-                    .font(.system(.title2, design: .monospaced))
-                    .foregroundStyle(.primary)
-                    .padding(.top, 8)
-
-                // Timeline scrubber
-                TimelineView(
-                    currentTime: $currentTime,
-                    duration: duration,
-                    markers: markers,
-                    onSeek: { time in
-                        player.seek(
-                            to: CMTime(seconds: time, preferredTimescale: 600),
-                            toleranceBefore: .zero,
-                            toleranceAfter: .zero
-                        )
+            // Time display + scrub
+            HStack(spacing: 16) {
+                Button {
+                    scrub(by: -1)
+                } label: {
+                    HStack(spacing: 3) {
+                        Image(systemName: "chevron.backward")
+                            .font(.system(size: 10, weight: .bold))
+                        Text("1s")
+                            .font(.system(size: 12, weight: .semibold, design: .rounded))
                     }
-                )
-                .padding(.horizontal)
-
-                // Marker editor
-                MarkerEditorView(markers: $markers, currentTime: currentTime)
-                    .padding(.horizontal)
-
-                Spacer()
-
-                // Cut button
-                if !markers.isEmpty {
-                    Button(action: cutAndSave) {
-                        HStack {
-                            if isExporting {
-                                ProgressView()
-                                    .tint(.white)
-                                Text(exportProgress)
-                            } else {
-                                Image(systemName: "scissors")
-                                Text("Cut & Save \(completeMarkerCount) Clip\(completeMarkerCount == 1 ? "" : "s")")
-                            }
-                        }
-                        .font(.headline)
-                        .frame(maxWidth: .infinity, minHeight: 50)
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .tint(.blue)
-                    .disabled(isExporting || completeMarkerCount == 0)
-                    .padding(.horizontal)
-                    .padding(.bottom, 16)
+                    .foregroundStyle(.secondary)
+                    .frame(width: 50, height: 32)
+                    .background(
+                        Capsule()
+                            .fill(Color(.tertiarySystemFill))
+                    )
                 }
+
+                VStack(spacing: 2) {
+                    Text(ClipMarker.formatTime(currentTime))
+                        .font(.system(size: 28, weight: .medium, design: .monospaced))
+                        .foregroundStyle(.primary)
+                        .contentTransition(.numericText())
+                }
+
+                Button {
+                    scrub(by: 1)
+                } label: {
+                    HStack(spacing: 3) {
+                        Text("1s")
+                            .font(.system(size: 12, weight: .semibold, design: .rounded))
+                        Image(systemName: "chevron.forward")
+                            .font(.system(size: 10, weight: .bold))
+                    }
+                    .foregroundStyle(.secondary)
+                    .frame(width: 50, height: 32)
+                    .background(
+                        Capsule()
+                            .fill(Color(.tertiarySystemFill))
+                    )
+                }
+            }
+            .padding(.top, 14)
+            .padding(.bottom, 10)
+
+            // Filmstrip
+            TimelineView(
+                currentTime: $currentTime,
+                duration: duration,
+                markers: markers,
+                thumbnails: thumbnails,
+                onSeek: { time in
+                    player.seek(
+                        to: CMTime(seconds: time, preferredTimescale: 600),
+                        toleranceBefore: .zero,
+                        toleranceAfter: .zero
+                    )
+                }
+            )
+
+            Spacer().frame(height: 16)
+
+            // Marker editor
+            MarkerEditorView(markers: $markers, currentTime: currentTime)
+                .padding(.horizontal, 16)
+
+            Spacer(minLength: 8)
+
+            // Cut button
+            if !markers.isEmpty {
+                Button(action: cutAndSave) {
+                    HStack(spacing: 10) {
+                        if isExporting {
+                            ProgressView()
+                                .tint(.white)
+                            Text(exportProgress)
+                        } else {
+                            Image(systemName: "scissors")
+                                .font(.system(size: 15, weight: .medium))
+                            Text("Cut & Save \(completeMarkerCount) Clip\(completeMarkerCount == 1 ? "" : "s")")
+                        }
+                    }
+                    .font(.system(.body, weight: .semibold))
+                    .foregroundColor(.white)
+                    .frame(maxWidth: .infinity, minHeight: 54)
+                    .background(
+                        RoundedRectangle(cornerRadius: 16, style: .continuous)
+                            .fill(
+                                completeMarkerCount == 0 || isExporting
+                                    ? AnyShapeStyle(Color.gray.opacity(0.4))
+                                    : AnyShapeStyle(
+                                        LinearGradient(
+                                            colors: [.accent, .accentLight],
+                                            startPoint: .leading,
+                                            endPoint: .trailing
+                                        )
+                                    )
+                            )
+                    )
+                    .shadow(
+                        color: completeMarkerCount > 0 && !isExporting ? .accent.opacity(0.25) : .clear,
+                        radius: 10, y: 4
+                    )
+                }
+                .disabled(isExporting || completeMarkerCount == 0)
+                .padding(.horizontal, 16)
+                .padding(.bottom, 20)
             }
         }
     }
@@ -150,10 +293,20 @@ struct ContentView: View {
         markers.filter { $0.isComplete }.count
     }
 
+    private func scrub(by seconds: Double) {
+        guard duration > 0 else { return }
+        let newTime = max(0, min(duration, currentTime + seconds))
+        currentTime = newTime
+        player?.seek(
+            to: CMTime(seconds: newTime, preferredTimescale: 600),
+            toleranceBefore: .zero,
+            toleranceAfter: .zero
+        )
+    }
+
     private func loadVideo(assetIdentifier: String) {
         isLoadingVideo = true
 
-        // Fetch PHAsset by identifier
         let fetchResult = PHAsset.fetchAssets(withLocalIdentifiers: [assetIdentifier], options: nil)
         guard let phAsset = fetchResult.firstObject else {
             isLoadingVideo = false
@@ -163,7 +316,6 @@ struct ContentView: View {
             return
         }
 
-        // Request AVAsset directly — no file copy needed
         let options = PHVideoRequestOptions()
         options.isNetworkAccessAllowed = true
         options.deliveryMode = .highQualityFormat
@@ -179,18 +331,60 @@ struct ContentView: View {
                     return
                 }
 
+                // Clean up any previous player/observer before setting new one
+                if let old = self.timeObserver {
+                    self.player?.removeTimeObserver(old)
+                    self.timeObserver = nil
+                }
+                self.player?.pause()
+
                 self.videoAsset = avAsset
                 let playerItem = AVPlayerItem(asset: avAsset)
                 let newPlayer = AVPlayer(playerItem: playerItem)
                 self.player = newPlayer
                 self.markers = []
                 self.currentTime = 0
+                self.duration = 0
+                self.thumbnails = []
+                self.videoAspectRatio = 16.0 / 9.0
 
+                // Load duration
                 Task {
                     if let d = try? await avAsset.load(.duration) {
                         await MainActor.run {
                             self.duration = d.seconds
                         }
+                    }
+                }
+
+                // Load video aspect ratio from track
+                Task {
+                    if let tracks = try? await avAsset.loadTracks(withMediaType: .video),
+                       let track = tracks.first {
+                        let size = try? await track.load(.naturalSize)
+                        let transform = try? await track.load(.preferredTransform)
+                        if let size = size, let transform = transform {
+                            let transformed = size.applying(transform)
+                            let w = abs(transformed.width)
+                            let h = abs(transformed.height)
+                            if w > 0, h > 0 {
+                                await MainActor.run {
+                                    self.videoAspectRatio = w / h
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Generate thumbnails
+                Task {
+                    let thumbs = await ThumbnailGenerator.generateThumbnails(
+                        from: avAsset,
+                        count: 60,
+                        size: CGSize(width: 80, height: 112)
+                    )
+                    await MainActor.run {
+                        self.thumbnails = thumbs
                     }
                 }
 
@@ -200,9 +394,6 @@ struct ContentView: View {
     }
 
     private func setupTimeObserver(for player: AVPlayer) {
-        if let old = timeObserver {
-            self.player?.removeTimeObserver(old)
-        }
         let interval = CMTime(seconds: 0.05, preferredTimescale: 600)
         timeObserver = player.addPeriodicTimeObserver(forInterval: interval, queue: .main) { time in
             self.currentTime = time.seconds
@@ -246,12 +437,15 @@ struct ContentView: View {
         if let old = timeObserver {
             player?.removeTimeObserver(old)
         }
+        timeObserver = nil
         player?.pause()
         player = nil
         videoAsset = nil
         markers = []
         currentTime = 0
         duration = 0
+        thumbnails = []
+        videoAspectRatio = 16.0 / 9.0
     }
 }
 

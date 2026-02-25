@@ -8,6 +8,10 @@ struct VideoPlayerView: UIViewControllerRepresentable {
         let controller = AVPlayerViewController()
         controller.player = player
         controller.showsPlaybackControls = true
+        controller.videoGravity = .resizeAspect
+        controller.view.backgroundColor = .black
+        controller.view.layer.cornerRadius = 16
+        controller.view.clipsToBounds = true
         return controller
     }
 
