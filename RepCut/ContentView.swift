@@ -3,6 +3,26 @@ import PhotosUI
 import AVKit
 import Photos
 
+// MARK: - Alert Model
+
+enum AppAlert: Identifiable {
+    case success(clipCount: Int)
+    case error(title: String, message: String)
+
+    var id: String {
+        switch self {
+        case .success(let n):        return "success-\(n)"
+        case .error(let t, _):       return "error-\(t)"
+        }
+    }
+    var title: String {
+        switch self {
+        case .success:               return "Clips saved! 🎉"
+        case .error(let t, _):       return t
+        }
+    }
+}
+
 // MARK: - Accent Color
 // Using ShapeStyle where Self == Color so .accent resolves in all SwiftUI style contexts
 
@@ -27,11 +47,7 @@ struct ContentView: View {
     @State private var showPicker = false
     @State private var isExporting = false
     @State private var exportProgress: String = ""
-    @State private var showAlert = false
-    @State private var alertTitle = ""
-    @State private var alertMessage = ""
-    @State private var showSuccessAlert = false
-    @State private var savedClipCount = 0
+    @State private var activeAlert: AppAlert?
     @State private var showSettings = false
 
     @AppStorage("alwaysDeleteOriginal") private var alwaysDeleteOriginal = false
@@ -78,20 +94,29 @@ struct ContentView: View {
                 }
             }
         }
-        .alert(alertTitle, isPresented: $showAlert) {
-            Button("OK") { }
-        } message: {
-            Text(alertMessage)
-        }
-        .alert("Clips saved! 🎉", isPresented: $showSuccessAlert) {
-            Button("Open Photos") {
-                if let url = URL(string: "photos-redirect://") {
-                    UIApplication.shared.open(url)
+        .alert(
+            Text(verbatim: activeAlert?.title ?? ""),
+            isPresented: Binding(get: { activeAlert != nil }, set: { if !$0 { activeAlert = nil } }),
+            presenting: activeAlert
+        ) { alert in
+            switch alert {
+            case .success:
+                Button("Open Photos") {
+                    if let url = URL(string: "photos-redirect://") {
+                        UIApplication.shared.open(url)
+                    }
                 }
+                Button("OK", role: .cancel) { }
+            case .error:
+                Button("OK") { }
             }
-            Button("OK", role: .cancel) { }
-        } message: {
-            Text("\(savedClipCount) clip\(savedClipCount == 1 ? "" : "s") saved to your photo library.")
+        } message: { alert in
+            switch alert {
+            case .success(let count):
+                Text("\(count) clip\(count == 1 ? "" : "s") saved to your photo library.")
+            case .error(_, let message):
+                Text(message)
+            }
         }
         .sheet(isPresented: $showSettings) {
             settingsView
@@ -391,9 +416,7 @@ struct ContentView: View {
         let fetchResult = PHAsset.fetchAssets(withLocalIdentifiers: [assetIdentifier], options: nil)
         guard let phAsset = fetchResult.firstObject else {
             isLoadingVideo = false
-            alertTitle = "Error"
-            alertMessage = "Could not find the selected video."
-            showAlert = true
+            activeAlert = .error(title: "Error", message: "Could not find the selected video.")
             return
         }
 
@@ -408,9 +431,7 @@ struct ContentView: View {
                 self.isLoadingVideo = false
 
                 guard let avAsset = avAsset else {
-                    self.alertTitle = "Error"
-                    self.alertMessage = "Could not load the selected video."
-                    self.showAlert = true
+                    self.activeAlert = .error(title: "Error", message: "Could not load the selected video.")
                     return
                 }
 
@@ -501,37 +522,35 @@ struct ContentView: View {
                 }
                 await MainActor.run {
                     isExporting = false
-                    self.savedClipCount = count
                     if self.alwaysDeleteOriginal {
-                        self.deleteOriginalVideo()
+                        self.deleteOriginalVideo(clipCount: count)
                     } else {
-                        self.showSuccessAlert = true
+                        self.activeAlert = .success(clipCount: count)
                     }
                 }
             } catch {
                 await MainActor.run {
                     isExporting = false
-                    alertTitle = "Export Error"
-                    alertMessage = error.localizedDescription
-                    showAlert = true
+                    activeAlert = .error(title: "Export Error", message: error.localizedDescription)
                 }
             }
         }
     }
 
-    private func deleteOriginalVideo() {
+    private func deleteOriginalVideo(clipCount: Int = 0) {
         guard let phAsset = sourcePhAsset else { return }
         PHPhotoLibrary.shared().performChanges({
             PHAssetChangeRequest.deleteAssets([phAsset] as NSArray)
         }) { success, error in
             DispatchQueue.main.async {
                 if success {
-                    self.showSuccessAlert = true
+                    self.activeAlert = .success(clipCount: clipCount)
                 } else {
-                    self.alertTitle = "Error"
-                    self.alertMessage = error?.localizedDescription ?? "Could not delete the original video."
+                    self.activeAlert = .error(
+                        title: "Error",
+                        message: error?.localizedDescription ?? "Could not delete the original video."
+                    )
                 }
-                self.showAlert = true
             }
         }
     }
