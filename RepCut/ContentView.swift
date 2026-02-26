@@ -7,17 +7,19 @@ import Photos
 
 enum AppAlert: Identifiable {
     case success(clipCount: Int)
+    case successKept(clipCount: Int)   // clips saved, user declined to delete original
     case error(title: String, message: String)
 
     var id: String {
         switch self {
         case .success(let n):        return "success-\(n)"
+        case .successKept(let n):    return "successKept-\(n)"
         case .error(let t, _):       return "error-\(t)"
         }
     }
     var title: String {
         switch self {
-        case .success:               return "Clips saved! 🎉"
+        case .success, .successKept: return "Clips saved! 🎉"
         case .error(let t, _):       return t
         }
     }
@@ -100,7 +102,7 @@ struct ContentView: View {
             presenting: activeAlert
         ) { alert in
             switch alert {
-            case .success:
+            case .success, .successKept:
                 Button("Open Photos") {
                     if let url = URL(string: "photos-redirect://") {
                         UIApplication.shared.open(url)
@@ -114,6 +116,8 @@ struct ContentView: View {
             switch alert {
             case .success(let count):
                 Text("\(count) clip\(count == 1 ? "" : "s") saved to your photo library.")
+            case .successKept(let count):
+                Text("\(count) clip\(count == 1 ? "" : "s") saved. Original video was kept.")
             case .error(_, let message):
                 Text(message)
             }
@@ -545,6 +549,10 @@ struct ContentView: View {
             DispatchQueue.main.async {
                 if success {
                     self.activeAlert = .success(clipCount: clipCount)
+                } else if (error as NSError?)?.code == 3072 {
+                    // PHPhotosError.userCancelled — user tapped "Don't Allow" on the
+                    // system deletion confirmation; not a real error, just show clips saved.
+                    self.activeAlert = .successKept(clipCount: clipCount)
                 } else {
                     self.activeAlert = .error(
                         title: "Error",
