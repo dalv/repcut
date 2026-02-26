@@ -179,6 +179,7 @@ struct ContentView: View {
                 .shadow(color: .black.opacity(0.08), radius: 12, y: 4)
                 .padding(.horizontal, 16)
                 .padding(.top, 8)
+                .layoutPriority(1)
 
             // Time display + scrub
             HStack(spacing: 16) {
