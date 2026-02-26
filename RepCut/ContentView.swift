@@ -30,6 +30,7 @@ struct ContentView: View {
     @State private var showAlert = false
     @State private var alertTitle = ""
     @State private var alertMessage = ""
+    @State private var showSuccessAlert = false
     @State private var showSettings = false
 
     @AppStorage("alwaysDeleteOriginal") private var alwaysDeleteOriginal = false
@@ -80,6 +81,16 @@ struct ContentView: View {
             Button("OK") { }
         } message: {
             Text(alertMessage)
+        }
+        .alert("Clips saved! 🎉", isPresented: $showSuccessAlert) {
+            Button("Open Photos") {
+                if let url = URL(string: "photos-redirect://") {
+                    UIApplication.shared.open(url)
+                }
+            }
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text("Your clips are in your photo library.")
         }
         .sheet(isPresented: $showSettings) {
             settingsView
@@ -492,9 +503,7 @@ struct ContentView: View {
                     if self.alwaysDeleteOriginal {
                         self.deleteOriginalVideo()
                     } else {
-                        self.alertTitle = "Clips Saved!"
-                        self.alertMessage = "\(count) clip\(count == 1 ? "" : "s") saved to your photo library."
-                        self.showAlert = true
+                        self.showSuccessAlert = true
                     }
                 }
             } catch {
@@ -515,8 +524,7 @@ struct ContentView: View {
         }) { success, error in
             DispatchQueue.main.async {
                 if success {
-                    self.alertTitle = "Clips saved! 🎉"
-                    self.alertMessage = "Your clips are in your photo library."
+                    self.showSuccessAlert = true
                 } else {
                     self.alertTitle = "Error"
                     self.alertMessage = error?.localizedDescription ?? "Could not delete the original video."
