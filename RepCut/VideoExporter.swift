@@ -15,28 +15,30 @@ class VideoExporter {
         }
     }
 
+    /// Returns the local identifiers of every saved clip so callers can deep-link into Photos.
     static func exportClips(
         from asset: AVAsset,
         markers: [ClipMarker],
         progress: @escaping (Int, Int) -> Void
-    ) async throws -> Int {
+    ) async throws -> [String] {
         let completeMarkers = markers.filter { $0.isComplete }
-        var savedCount = 0
+        var identifiers: [String] = []
 
         for (index, marker) in completeMarkers.enumerated() {
             progress(index + 1, completeMarkers.count)
-            try await exportSingleClip(from: asset, start: marker.start, end: marker.end!)
-            savedCount += 1
+            let id = try await exportSingleClip(from: asset, start: marker.start, end: marker.end!)
+            if let id { identifiers.append(id) }
         }
 
-        return savedCount
+        return identifiers
     }
 
+    /// Returns the PHAsset local identifier of the saved clip, or nil if unavailable.
     private static func exportSingleClip(
         from asset: AVAsset,
         start: Double,
         end: Double
-    ) async throws {
+    ) async throws -> String? {
         let startTime = CMTime(seconds: start, preferredTimescale: 600)
         let endTime = CMTime(seconds: end, preferredTimescale: 600)
         let timeRange = CMTimeRange(start: startTime, end: endTime)
@@ -73,11 +75,15 @@ class VideoExporter {
             throw ExportError.photoLibraryDenied
         }
 
+        // Capture the placeholder identifier so we can deep-link into Photos after saving.
+        var localIdentifier: String?
         try await PHPhotoLibrary.shared().performChanges {
-            PHAssetChangeRequest.creationRequestForAssetFromVideo(atFileURL: outputURL)
+            let request = PHAssetChangeRequest.creationRequestForAssetFromVideo(atFileURL: outputURL)
+            localIdentifier = request?.placeholderForCreatedAsset?.localIdentifier
         }
 
         // Clean up temp file
         try? FileManager.default.removeItem(at: outputURL)
+        return localIdentifier
     }
 }

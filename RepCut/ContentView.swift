@@ -50,6 +50,7 @@ struct ContentView: View {
     @State private var isExporting = false
     @State private var exportProgress: String = ""
     @State private var activeAlert: AppAlert?
+    @State private var savedIdentifiers: [String] = []
     @State private var showSettings = false
 
     @AppStorage("alwaysDeleteOriginal") private var alwaysDeleteOriginal = false
@@ -104,8 +105,15 @@ struct ContentView: View {
             switch alert {
             case .success, .successKept:
                 Button("Open Photos") {
-                    if let url = URL(string: "photos-redirect://") {
-                        UIApplication.shared.open(url)
+                    // Try to deep-link to the first saved clip via ph://<localIdentifier>.
+                    // Falls back to opening the Photos app root if unavailable.
+                    let target: URL? = savedIdentifiers.first
+                        .flatMap { URL(string: "ph://\($0)") }
+                    let fallback = URL(string: "photos-redirect://")!
+                    UIApplication.shared.open(target ?? fallback) { success in
+                        if !success, target != nil {
+                            UIApplication.shared.open(fallback)
+                        }
                     }
                 }
                 Button("OK", role: .cancel) { }
@@ -516,7 +524,7 @@ struct ContentView: View {
 
         Task {
             do {
-                let count = try await VideoExporter.exportClips(
+                let identifiers = try await VideoExporter.exportClips(
                     from: asset,
                     markers: markers
                 ) { current, total in
@@ -526,10 +534,11 @@ struct ContentView: View {
                 }
                 await MainActor.run {
                     isExporting = false
+                    self.savedIdentifiers = identifiers
                     if self.alwaysDeleteOriginal {
-                        self.deleteOriginalVideo(clipCount: count)
+                        self.deleteOriginalVideo(clipCount: identifiers.count)
                     } else {
-                        self.activeAlert = .success(clipCount: count)
+                        self.activeAlert = .success(clipCount: identifiers.count)
                     }
                 }
             } catch {
@@ -577,6 +586,7 @@ struct ContentView: View {
         duration = 0
         thumbnails = []
         videoAspectRatio = 16.0 / 9.0
+        savedIdentifiers = []
     }
 }
 
