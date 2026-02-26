@@ -195,7 +195,7 @@ struct ContentView: View {
         NavigationStack {
             Form {
                 Section {
-                    Toggle("Always delete original", isOn: $alwaysDeleteOriginal)
+                    Toggle("Auto delete original", isOn: $alwaysDeleteOriginal)
                 } footer: {
                     Text("When on, the original video is automatically deleted from your photo library after clips are exported.")
                 }
@@ -515,8 +515,8 @@ struct ContentView: View {
         }) { success, error in
             DispatchQueue.main.async {
                 if success {
-                    self.alertTitle = "Deleted"
-                    self.alertMessage = "The original video has been deleted."
+                    self.alertTitle = "Clips saved! 🎉"
+                    self.alertMessage = "Your clips are in your photo library."
                 } else {
                     self.alertTitle = "Error"
                     self.alertMessage = error?.localizedDescription ?? "Could not delete the original video."
