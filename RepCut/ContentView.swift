@@ -31,6 +31,7 @@ struct ContentView: View {
     @State private var alertTitle = ""
     @State private var alertMessage = ""
     @State private var showSuccessAlert = false
+    @State private var savedClipCount = 0
     @State private var showSettings = false
 
     @AppStorage("alwaysDeleteOriginal") private var alwaysDeleteOriginal = false
@@ -90,7 +91,7 @@ struct ContentView: View {
             }
             Button("OK", role: .cancel) { }
         } message: {
-            Text("Your clips are in your photo library.")
+            Text("\(savedClipCount) clip\(savedClipCount == 1 ? "" : "s") saved to your photo library.")
         }
         .sheet(isPresented: $showSettings) {
             settingsView
@@ -500,6 +501,7 @@ struct ContentView: View {
                 }
                 await MainActor.run {
                     isExporting = false
+                    self.savedClipCount = count
                     if self.alwaysDeleteOriginal {
                         self.deleteOriginalVideo()
                     } else {
