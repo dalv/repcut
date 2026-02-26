@@ -54,13 +54,6 @@ struct ContentView: View {
                                 .foregroundStyle(.accent)
                             }
                         }
-                        ToolbarItem(placement: .topBarTrailing) {
-                            if duration > 0 {
-                                Text(ClipMarker.formatTime(duration))
-                                    .font(.custom("HelveticaNeue-Light", size: 12))
-                                    .foregroundStyle(.secondary)
-                            }
-                        }
                     }
             } else {
                 pickerView
@@ -206,10 +199,17 @@ struct ContentView: View {
                     )
                 }
 
-                Text(ClipMarker.formatTime(currentTime))
-                    .font(.custom("HelveticaNeue-Light", size: 30))
-                    .foregroundStyle(.primary)
-                    .contentTransition(.numericText())
+                HStack(alignment: .lastTextBaseline, spacing: 6) {
+                    Text(ClipMarker.formatTime(currentTime))
+                        .font(.custom("HelveticaNeue-Light", size: 30))
+                        .foregroundStyle(.primary)
+                        .contentTransition(.numericText())
+                    if duration > 0 {
+                        Text("/ \(ClipMarker.formatTime(duration))")
+                            .font(.custom("HelveticaNeue-Light", size: 14))
+                            .foregroundStyle(.tertiary)
+                    }
+                }
 
                 Button {
                     scrub(by: 1)
@@ -305,11 +305,15 @@ struct ContentView: View {
     }
 
     private var playheadColor: Color {
-        let colors: [Color] = [.accent, .green, .orange, .purple, .pink, .cyan]
-        guard !markers.isEmpty else { return .accent }
-        // If the last marker is in-progress, reflect its clip color; otherwise default to accent
-        guard let last = markers.last, !last.isComplete else { return .accent }
-        return colors[(markers.count - 1) % colors.count]
+        let colors: [Color] = [.accent, .orange, .purple, .cyan, .pink, .teal]
+        // Mirror the same nextClipIndex logic as MarkerEditorView so all three stay in sync
+        let idx: Int
+        if let last = markers.last, !last.isComplete {
+            idx = markers.count - 1
+        } else {
+            idx = markers.count
+        }
+        return colors[idx % colors.count]
     }
 
     private func scrub(by seconds: Double) {
@@ -401,7 +405,7 @@ struct ContentView: View {
                 Task {
                     let thumbs = await ThumbnailGenerator.generateThumbnails(
                         from: avAsset,
-                        count: 60,
+                        count: 20,
                         size: CGSize(width: 80, height: 112)
                     )
                     await MainActor.run {

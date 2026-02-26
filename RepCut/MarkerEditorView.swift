@@ -36,7 +36,7 @@ struct MarkerEditorView: View {
                     .foregroundColor(.white)
                     .background(
                         RoundedRectangle(cornerRadius: 12, style: .continuous)
-                            .fill(canMarkEnd ? markerColor(for: markers.count - 1) : Color.gray.opacity(0.3))
+                            .fill(canMarkEnd ? markerColor(for: markers.count - 1) : markerColor(for: nextClipIndex).opacity(0.45))
                     )
                 }
                 .disabled(!canMarkEnd)
@@ -142,7 +142,7 @@ struct MarkerEditorView: View {
     }
 
     private func markerColor(for index: Int) -> Color {
-        let colors: [Color] = [.accent, .green, .orange, .purple, .pink, .cyan]
+        let colors: [Color] = [.accent, .orange, .purple, .cyan, .pink, .teal]
         return colors[index % colors.count]
     }
 }
