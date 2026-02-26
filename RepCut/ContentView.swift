@@ -30,8 +30,9 @@ struct ContentView: View {
     @State private var showAlert = false
     @State private var alertTitle = ""
     @State private var alertMessage = ""
-    @State private var showDeletePrompt = false
-    @State private var exportedClipCount = 0
+    @State private var showSettings = false
+
+    @AppStorage("alwaysDeleteOriginal") private var alwaysDeleteOriginal = false
 
     var body: some View {
         NavigationStack {
@@ -54,6 +55,12 @@ struct ContentView: View {
                                 .foregroundStyle(.accent)
                             }
                         }
+                        ToolbarItem(placement: .topBarTrailing) {
+                            Button { showSettings = true } label: {
+                                Image(systemName: "gearshape")
+                                    .foregroundStyle(.accent)
+                            }
+                        }
                     }
             } else {
                 pickerView
@@ -74,13 +81,8 @@ struct ContentView: View {
         } message: {
             Text(alertMessage)
         }
-        .alert("Clips Saved!", isPresented: $showDeletePrompt) {
-            Button("Delete Original", role: .destructive) {
-                deleteOriginalVideo()
-            }
-            Button("Keep Original", role: .cancel) { }
-        } message: {
-            Text("\(exportedClipCount) clip\(exportedClipCount == 1 ? "" : "s") saved to your photo library. Delete the original video to free up space?")
+        .sheet(isPresented: $showSettings) {
+            settingsView
         }
     }
 
@@ -163,12 +165,49 @@ struct ContentView: View {
                 Spacer()
                 Spacer()
             }
+
+            // Settings gear — top-right corner
+            VStack {
+                HStack {
+                    Spacer()
+                    Button { showSettings = true } label: {
+                        Image(systemName: "gearshape")
+                            .font(.system(size: 18, weight: .light))
+                            .foregroundStyle(.secondary)
+                            .padding(.top, 16)
+                            .padding(.trailing, 20)
+                    }
+                }
+                Spacer()
+            }
         }
         .onAppear {
             // Request photo library access immediately on launch so the
             // permission dialog fires before the user picks a video —
             // not mid-flow after PHPicker closes (which causes "video not found").
             PHPhotoLibrary.requestAuthorization(for: .readWrite) { _ in }
+        }
+    }
+
+    // MARK: - Settings View
+
+    private var settingsView: some View {
+        NavigationStack {
+            Form {
+                Section {
+                    Toggle("Always delete original", isOn: $alwaysDeleteOriginal)
+                } footer: {
+                    Text("When on, the original video is automatically deleted from your photo library after clips are exported.")
+                }
+            }
+            .navigationTitle("Settings")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Done") { showSettings = false }
+                        .foregroundStyle(.accent)
+                }
+            }
         }
     }
 
@@ -450,8 +489,13 @@ struct ContentView: View {
                 }
                 await MainActor.run {
                     isExporting = false
-                    exportedClipCount = count
-                    showDeletePrompt = true
+                    if self.alwaysDeleteOriginal {
+                        self.deleteOriginalVideo()
+                    } else {
+                        self.alertTitle = "Clips Saved!"
+                        self.alertMessage = "\(count) clip\(count == 1 ? "" : "s") saved to your photo library."
+                        self.showAlert = true
+                    }
                 }
             } catch {
                 await MainActor.run {
