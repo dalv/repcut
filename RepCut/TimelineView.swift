@@ -77,7 +77,11 @@ struct FilmstripScrollView: UIViewRepresentable {
         scrollView.decelerationRate = .fast
         scrollView.delegate = context.coordinator
         scrollView.clipsToBounds = true
-        scrollView.backgroundColor = UIColor.black.withAlphaComponent(0.85)
+        scrollView.backgroundColor = UIColor { tc in
+            tc.userInterfaceStyle == .dark
+                ? UIColor.black.withAlphaComponent(0.85)
+                : UIColor.secondarySystemBackground
+        }
         scrollView.layer.cornerRadius = 8
 
         let pinch = UIPinchGestureRecognizer(
