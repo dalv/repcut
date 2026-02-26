@@ -98,6 +98,14 @@ struct FilmstripScrollView: UIViewRepresentable {
         let viewWidth = scrollView.bounds.width
         guard viewWidth > 0 else { return }
 
+        // On first load with thumbnails, zoom so the full strip fits exactly on screen
+        if !coord.hasSetInitialZoom && !thumbnails.isEmpty {
+            let fitZoom = viewWidth / (CGFloat(thumbnails.count) * Self.baseThumbWidth)
+            coord.zoomScale = fitZoom
+            coord.minZoom = fitZoom
+            coord.hasSetInitialZoom = true
+        }
+
         let thumbWidth = Self.baseThumbWidth * coord.zoomScale
         let totalStripWidth = CGFloat(max(thumbnails.count, 1)) * thumbWidth
         let halfView = viewWidth / 2
@@ -156,6 +164,8 @@ struct FilmstripScrollView: UIViewRepresentable {
 
         var isUserScrolling = false
         var zoomScale: CGFloat = 1.0
+        var minZoom: CGFloat = 0.05
+        var hasSetInitialZoom = false
         var totalStripWidth: CGFloat = 0
         var halfView: CGFloat = 0
         var lastThumbnailCount = 0
@@ -208,7 +218,7 @@ struct FilmstripScrollView: UIViewRepresentable {
 
             // Accent indigo color matching Color.accent
             let accentUIColor = UIColor(red: 0.38, green: 0.40, blue: 0.95, alpha: 1.0)
-            let colors: [UIColor] = [accentUIColor, .systemGreen, .systemOrange, .systemPurple, .systemPink, .systemCyan]
+            let colors: [UIColor] = [accentUIColor, .systemOrange, .systemPurple, .systemCyan, .systemPink, .systemTeal]
 
             for (index, marker) in markers.enumerated() {
                 guard let end = marker.end, duration > 0 else { continue }
@@ -285,7 +295,7 @@ struct FilmstripScrollView: UIViewRepresentable {
 
             if gesture.state == .changed {
                 let oldScale = zoomScale
-                let newScale = max(0.5, min(4.0, zoomScale * gesture.scale))
+                let newScale = max(minZoom, min(4.0, zoomScale * gesture.scale))
                 gesture.scale = 1.0
                 guard abs(newScale - oldScale) > 0.001 else { return }
 
