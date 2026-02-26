@@ -51,8 +51,6 @@ struct ContentView: View {
     @State private var exportProgress: String = ""
     @State private var activeAlert: AppAlert?
     @State private var savedIdentifiers: [String] = []
-    @State private var showClipPreview = false
-    @State private var previewPlayer: AVPlayer?
     @State private var showSettings = false
 
     @AppStorage("alwaysDeleteOriginal") private var alwaysDeleteOriginal = false
@@ -106,7 +104,11 @@ struct ContentView: View {
         ) { alert in
             switch alert {
             case .success, .successKept:
-                Button("Watch") { loadClipPreview() }
+                Button("Open Photos") {
+                    if let url = URL(string: "photos-redirect://") {
+                        UIApplication.shared.open(url)
+                    }
+                }
                 Button("OK", role: .cancel) { }
             case .error:
                 Button("OK") { }
@@ -119,13 +121,6 @@ struct ContentView: View {
                 Text("\(count) clip\(count == 1 ? "" : "s") saved. Original video was kept.")
             case .error(_, let message):
                 Text(message)
-            }
-        }
-        .sheet(isPresented: $showClipPreview, onDismiss: { previewPlayer?.pause() }) {
-            if let player = previewPlayer {
-                VideoPlayer(player: player)
-                    .ignoresSafeArea()
-                    .onAppear { player.play() }
             }
         }
         .sheet(isPresented: $showSettings) {
@@ -587,23 +582,6 @@ struct ContentView: View {
         savedIdentifiers = []
     }
 
-    private func loadClipPreview() {
-        guard let identifier = savedIdentifiers.first else { return }
-        let result = PHAsset.fetchAssets(withLocalIdentifiers: [identifier], options: nil)
-        guard let phAsset = result.firstObject else { return }
-
-        let options = PHVideoRequestOptions()
-        options.isNetworkAccessAllowed = true
-        options.deliveryMode = .highQualityFormat
-
-        PHImageManager.default().requestAVAsset(forVideo: phAsset, options: options) { avAsset, _, _ in
-            DispatchQueue.main.async {
-                guard let avAsset else { return }
-                self.previewPlayer = AVPlayer(playerItem: AVPlayerItem(asset: avAsset))
-                self.showClipPreview = true
-            }
-        }
-    }
 }
 
 // MARK: - PHPicker UIKit Wrapper
