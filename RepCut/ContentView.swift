@@ -164,6 +164,12 @@ struct ContentView: View {
                 Spacer()
             }
         }
+        .onAppear {
+            // Request photo library access immediately on launch so the
+            // permission dialog fires before the user picks a video —
+            // not mid-flow after PHPicker closes (which causes "video not found").
+            PHPhotoLibrary.requestAuthorization(for: .readWrite) { _ in }
+        }
     }
 
     // MARK: - Editor View
