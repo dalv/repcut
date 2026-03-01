@@ -5,11 +5,51 @@ struct MarkerEditorView: View {
     let currentTime: Double
     var videoBreakpoints: [Double] = []
     var clipPanelExpanded: Bool = false
+    var onScrub: ((Double) -> Void)?
 
     var body: some View {
         VStack(spacing: 12) {
-            // Action buttons
-            HStack(spacing: 10) {
+            // Combined row: [◀1s] [time] [1s▶] | [Start clip] [End clip]
+            HStack(spacing: 6) {
+                // Scrub back
+                Button { onScrub?(-1) } label: {
+                    HStack(spacing: 2) {
+                        Image(systemName: "chevron.backward")
+                            .font(.system(size: 10, weight: .bold))
+                        Text("1s")
+                            .font(.system(size: 12, weight: .semibold, design: .rounded))
+                    }
+                    .foregroundStyle(.secondary)
+                    .frame(width: 44, height: 44)
+                    .background(Capsule().fill(Color(UIColor.tertiarySystemFill)))
+                }
+
+                // Current time
+                Text(ClipMarker.formatTime(currentTime))
+                    .font(.custom("HelveticaNeue-Light", size: 20))
+                    .foregroundStyle(.primary)
+                    .contentTransition(.numericText())
+                    .monospacedDigit()
+                    .frame(width: 60, alignment: .center)
+
+                // Scrub forward
+                Button { onScrub?(1) } label: {
+                    HStack(spacing: 2) {
+                        Text("1s")
+                            .font(.system(size: 12, weight: .semibold, design: .rounded))
+                        Image(systemName: "chevron.forward")
+                            .font(.system(size: 10, weight: .bold))
+                    }
+                    .foregroundStyle(.secondary)
+                    .frame(width: 44, height: 44)
+                    .background(Capsule().fill(Color(UIColor.tertiarySystemFill)))
+                }
+
+                Divider()
+                    .frame(height: 26)
+                    .padding(.horizontal, 2)
+
+                // Start clip
                 Button(action: markStart) {
                     Label {
                         Text("Start clip")
@@ -26,6 +66,7 @@ struct MarkerEditorView: View {
                     )
                 }
 
+                // End clip
                 Button(action: markEnd) {
                     Label {
                         Text("End clip")

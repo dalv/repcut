@@ -277,58 +277,8 @@ struct ContentView: View {
                 .padding(.horizontal, 16)
                 .padding(.top, 8)
 
-            // Time display + scrub
-            HStack(spacing: 16) {
-                Button {
-                    scrub(by: -1)
-                } label: {
-                    HStack(spacing: 3) {
-                        Image(systemName: "chevron.backward")
-                            .font(.system(size: 10, weight: .bold))
-                        Text("1s")
-                            .font(.system(size: 12, weight: .semibold, design: .rounded))
-                    }
-                    .foregroundStyle(.secondary)
-                    .frame(width: 50, height: 32)
-                    .background(
-                        Capsule()
-                            .fill(Color(UIColor.tertiarySystemFill))
-                    )
-                }
-
-                HStack(alignment: .lastTextBaseline, spacing: 6) {
-                    Text(ClipMarker.formatTime(currentTime))
-                        .font(.custom("HelveticaNeue-Light", size: 30))
-                        .foregroundStyle(.primary)
-                        .contentTransition(.numericText())
-                    if duration > 0 {
-                        Text("/ \(ClipMarker.formatTime(duration))")
-                            .font(.custom("HelveticaNeue-Light", size: 14))
-                            .foregroundStyle(.tertiary)
-                    }
-                }
-
-                Button {
-                    scrub(by: 1)
-                } label: {
-                    HStack(spacing: 3) {
-                        Text("1s")
-                            .font(.system(size: 12, weight: .semibold, design: .rounded))
-                        Image(systemName: "chevron.forward")
-                            .font(.system(size: 10, weight: .bold))
-                    }
-                    .foregroundStyle(.secondary)
-                    .frame(width: 50, height: 32)
-                    .background(
-                        Capsule()
-                            .fill(Color(UIColor.tertiarySystemFill))
-                    )
-                }
-            }
-            .padding(.top, 14)
-            .padding(.bottom, 10)
-
             // Filmstrip
+            Spacer().frame(height: 10)
             TimelineView(
                 currentTime: $currentTime,
                 duration: duration,
@@ -357,7 +307,8 @@ struct ContentView: View {
                 markers: $markers,
                 currentTime: currentTime,
                 videoBreakpoints: videoBreakpoints,
-                clipPanelExpanded: clipPanelExpanded
+                clipPanelExpanded: clipPanelExpanded,
+                onScrub: { scrub(by: $0) }
             )
             .padding(.horizontal, 16)
             .animation(.spring(response: 0.35, dampingFraction: 0.75), value: clipPanelExpanded)
