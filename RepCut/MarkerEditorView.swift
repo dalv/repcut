@@ -4,6 +4,7 @@ struct MarkerEditorView: View {
     @Binding var markers: [ClipMarker]
     let currentTime: Double
     var videoBreakpoints: [Double] = []
+    var clipPanelExpanded: Bool = false
 
     var body: some View {
         VStack(spacing: 12) {
@@ -43,17 +44,8 @@ struct MarkerEditorView: View {
                 .disabled(!canMarkEnd)
             }
 
-            // Marker list
-            if markers.isEmpty {
-                HStack {
-                    Image(systemName: "hand.draw")
-                        .foregroundStyle(.quaternary)
-                    Text("Scrub to a position and tap Start clip")
-                        .font(.system(.footnote, weight: .regular))
-                        .foregroundStyle(.tertiary)
-                }
-                .padding(.vertical, 8)
-            } else {
+            // Clip list — only visible when panel is expanded
+            if clipPanelExpanded && !markers.isEmpty {
                 ScrollView(.vertical, showsIndicators: false) {
                     VStack(spacing: 8) {
                         ForEach(Array(markers.enumerated()), id: \.element.id) { index, marker in
@@ -109,8 +101,20 @@ struct MarkerEditorView: View {
                         }
                     }
                 }
-                .frame(maxHeight: markers.count <= 1 ? CGFloat(markers.count) * 68 : 98)
+                // Show clip 1 fully + peek of clip 2 (~half a row)
+                .frame(maxHeight: markers.count == 1 ? 68 : 110)
+                .transition(.move(edge: .bottom).combined(with: .opacity))
+            } else if markers.isEmpty {
+                HStack {
+                    Image(systemName: "hand.draw")
+                        .foregroundStyle(.quaternary)
+                    Text("Scrub to a position and tap Start clip")
+                        .font(.system(.footnote, weight: .regular))
+                        .foregroundStyle(.tertiary)
+                }
+                .padding(.vertical, 8)
             }
+            // When clips exist but panel is collapsed: nothing shown below buttons
         }
     }
 

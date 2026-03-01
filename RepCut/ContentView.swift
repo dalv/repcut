@@ -53,6 +53,7 @@ struct ContentView: View {
     @State private var activeAlert: AppAlert?
     @State private var savedIdentifiers: [String] = []
     @State private var showSettings = false
+    @State private var clipPanelExpanded = false
 
     @AppStorage("alwaysDeleteOriginal") private var alwaysDeleteOriginal = false
 
@@ -61,6 +62,13 @@ struct ContentView: View {
             if let player = player {
                 editorView(player: player)
                     .background(Color(.systemGroupedBackground))
+                    .onChange(of: markers.count) { newCount in
+                        if newCount == 0 && clipPanelExpanded {
+                            withAnimation(.spring(response: 0.35, dampingFraction: 0.75)) {
+                                clipPanelExpanded = false
+                            }
+                        }
+                    }
                     .navigationTitle("RepCut")
                     .navigationBarTitleDisplayMode(.inline)
                     .toolbar {
@@ -262,7 +270,8 @@ struct ContentView: View {
             VideoPlayerView(player: player)
                 .frame(maxWidth: .infinity)
                 .aspectRatio(videoAspectRatio, contentMode: .fit)
-                .frame(maxHeight: 380)
+                .frame(maxHeight: 500)
+                .animation(.spring(response: 0.35, dampingFraction: 0.75), value: clipPanelExpanded)
                 .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                 .shadow(color: .black.opacity(0.08), radius: 12, y: 4)
                 .padding(.horizontal, 16)
@@ -336,11 +345,22 @@ struct ContentView: View {
                 }
             )
 
-            Spacer().frame(height: 16)
+            // Drag handle — tap or drag to reveal/hide the clip list
+            if markers.isEmpty {
+                Spacer().frame(height: 16)
+            } else {
+                clipPanelHandle
+            }
 
             // Marker editor
-            MarkerEditorView(markers: $markers, currentTime: currentTime, videoBreakpoints: videoBreakpoints)
-                .padding(.horizontal, 16)
+            MarkerEditorView(
+                markers: $markers,
+                currentTime: currentTime,
+                videoBreakpoints: videoBreakpoints,
+                clipPanelExpanded: clipPanelExpanded
+            )
+            .padding(.horizontal, 16)
+            .animation(.spring(response: 0.35, dampingFraction: 0.75), value: clipPanelExpanded)
 
             Spacer(minLength: 8)
 
@@ -383,6 +403,36 @@ struct ContentView: View {
                 .disabled(isExporting || completeMarkerCount == 0)
                 .padding(.horizontal, 16)
                 .padding(.bottom, 20)
+            }
+        }
+    }
+
+    // MARK: - Clip Panel Handle
+
+    private var clipPanelHandle: some View {
+        VStack(spacing: 4) {
+            Capsule()
+                .fill(Color.secondary.opacity(0.25))
+                .frame(width: 32, height: 4)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 10)
+        .contentShape(Rectangle())
+        .gesture(
+            DragGesture(minimumDistance: 10)
+                .onEnded { value in
+                    withAnimation(.spring(response: 0.35, dampingFraction: 0.75)) {
+                        if value.translation.height < -20 {
+                            clipPanelExpanded = true
+                        } else if value.translation.height > 20 {
+                            clipPanelExpanded = false
+                        }
+                    }
+                }
+        )
+        .onTapGesture {
+            withAnimation(.spring(response: 0.35, dampingFraction: 0.75)) {
+                clipPanelExpanded.toggle()
             }
         }
     }
@@ -643,6 +693,7 @@ struct ContentView: View {
         thumbnails = []
         videoAspectRatio = 16.0 / 9.0
         savedIdentifiers = []
+        clipPanelExpanded = false
     }
 
 }
