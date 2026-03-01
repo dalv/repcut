@@ -6,6 +6,7 @@ struct TimelineView: View {
     let duration: Double
     let markers: [ClipMarker]
     let thumbnails: [UIImage]
+    var videoBreakpoints: [Double] = []
     var playheadColor: Color = .accent
     var onSeek: (Double) -> Void
 
@@ -24,6 +25,7 @@ struct TimelineView: View {
                 currentTime: $currentTime,
                 duration: duration,
                 markers: markers,
+                videoBreakpoints: videoBreakpoints,
                 onSeek: onSeek
             )
             .frame(height: thumbHeight)
@@ -61,6 +63,7 @@ struct FilmstripScrollView: UIViewRepresentable {
     @Binding var currentTime: Double
     let duration: Double
     let markers: [ClipMarker]
+    var videoBreakpoints: [Double] = []
     let onSeek: (Double) -> Void
 
     static let baseThumbWidth: CGFloat = 40
@@ -148,6 +151,19 @@ struct FilmstripScrollView: UIViewRepresentable {
             coord.lastMarkerKey = markerKey
         }
 
+        // Update separator overlays (video boundaries)
+        let breakpointKey = videoBreakpoints.map { "\($0)" }.joined()
+        if coord.lastBreakpointKey != breakpointKey || abs(coord.lastThumbWidth - thumbWidth) > 0.1 {
+            coord.updateSeparatorOverlays(
+                in: scrollView,
+                breakpoints: videoBreakpoints,
+                duration: duration,
+                totalStripWidth: totalStripWidth,
+                halfView: halfView
+            )
+            coord.lastBreakpointKey = breakpointKey
+        }
+
         // Sync scroll position from time (only when user is NOT scrolling)
         if !coord.isUserScrolling && totalStripWidth > 0 {
             let targetOffset = CGFloat(duration > 0 ? currentTime / duration : 0) * totalStripWidth
@@ -178,6 +194,8 @@ struct FilmstripScrollView: UIViewRepresentable {
 
         var thumbnailViews: [UIImageView] = []
         var markerViews: [UIView] = []
+        var separatorViews: [UIView] = []
+        var lastBreakpointKey = ""
 
         init(parent: FilmstripScrollView) {
             self.parent = parent
@@ -244,6 +262,29 @@ struct FilmstripScrollView: UIViewRepresentable {
                 overlay.isUserInteractionEnabled = false
                 scrollView.addSubview(overlay)
                 markerViews.append(overlay)
+            }
+        }
+
+        func updateSeparatorOverlays(in scrollView: UIScrollView, breakpoints: [Double], duration: Double, totalStripWidth: CGFloat, halfView: CGFloat) {
+            separatorViews.forEach { $0.removeFromSuperview() }
+            separatorViews = []
+
+            guard duration > 0 else { return }
+
+            // Skip the first breakpoint (0.0) — only draw lines between videos
+            for breakpoint in breakpoints where breakpoint > 0 {
+                let x = halfView + CGFloat(breakpoint / duration) * totalStripWidth
+                let separator = UIView()
+                separator.frame = CGRect(
+                    x: x - 0.75,
+                    y: 0,
+                    width: 1.5,
+                    height: FilmstripScrollView.thumbHeight
+                )
+                separator.backgroundColor = UIColor.white.withAlphaComponent(0.85)
+                separator.isUserInteractionEnabled = false
+                scrollView.addSubview(separator)
+                separatorViews.append(separator)
             }
         }
 
@@ -326,6 +367,13 @@ struct FilmstripScrollView: UIViewRepresentable {
                 updateMarkerOverlays(
                     in: scrollView,
                     markers: parent.markers,
+                    duration: parent.duration,
+                    totalStripWidth: newTotalWidth,
+                    halfView: newHalfView
+                )
+                updateSeparatorOverlays(
+                    in: scrollView,
+                    breakpoints: parent.videoBreakpoints,
                     duration: parent.duration,
                     totalStripWidth: newTotalWidth,
                     halfView: newHalfView

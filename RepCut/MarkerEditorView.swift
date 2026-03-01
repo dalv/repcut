@@ -3,6 +3,7 @@ import SwiftUI
 struct MarkerEditorView: View {
     @Binding var markers: [ClipMarker]
     let currentTime: Double
+    var videoBreakpoints: [Double] = []
 
     var body: some View {
         VStack(spacing: 12) {
@@ -108,14 +109,23 @@ struct MarkerEditorView: View {
                         }
                     }
                 }
-                .frame(maxHeight: CGFloat(min(markers.count, 4)) * 68)
+                .frame(maxHeight: markers.count <= 1 ? CGFloat(markers.count) * 68 : 98)
             }
         }
     }
 
     private var canMarkEnd: Bool {
-        guard let last = markers.last else { return false }
-        return last.end == nil
+        guard let last = markers.last, last.end == nil else { return false }
+        // Disable End clip if current time is in a different video than the start
+        if !videoBreakpoints.isEmpty {
+            return videoIndex(for: currentTime) == videoIndex(for: last.start)
+        }
+        return true
+    }
+
+    /// Returns which video segment the given time falls in (index into videoBreakpoints).
+    private func videoIndex(for time: Double) -> Int {
+        (videoBreakpoints.lastIndex(where: { $0 <= time }) ?? 0)
     }
 
     // Index the next clip will get (used to color the action buttons)
@@ -137,6 +147,10 @@ struct MarkerEditorView: View {
         guard var last = markers.last, last.end == nil else { return }
         let endTime = currentTime
         guard endTime > last.start else { return }
+        // Prevent cross-video clips
+        if !videoBreakpoints.isEmpty {
+            guard videoIndex(for: endTime) == videoIndex(for: last.start) else { return }
+        }
         last.end = endTime
         markers[markers.count - 1] = last
     }

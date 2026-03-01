@@ -43,7 +43,8 @@ struct ContentView: View {
     @State private var thumbnails: [UIImage] = []
     @State private var videoAspectRatio: CGFloat = 16.0 / 9.0
 
-    @State private var sourcePhAsset: PHAsset?
+    @State private var sourcePhAssets: [PHAsset] = []
+    @State private var videoBreakpoints: [Double] = []
 
     @State private var isLoadingVideo = false
     @State private var showPicker = false
@@ -91,9 +92,9 @@ struct ContentView: View {
         }
         .tint(.accent)
         .sheet(isPresented: $showPicker) {
-            VideoPicker { assetIdentifier in
-                if let assetIdentifier = assetIdentifier {
-                    loadVideo(assetIdentifier: assetIdentifier)
+            VideoPicker { identifiers in
+                if !identifiers.isEmpty {
+                    loadVideos(assetIdentifiers: identifiers)
                 }
             }
         }
@@ -178,9 +179,9 @@ struct ContentView: View {
                     showPicker = true
                 } label: {
                     HStack(spacing: 10) {
-                        Image(systemName: "video.badge.plus")
+                        Image(systemName: "photo.stack")
                             .font(.system(size: 16, weight: .medium))
-                        Text("Choose Video")
+                        Text("Choose Videos")
                             .font(.system(.body, weight: .semibold))
                     }
                     .foregroundColor(.white)
@@ -261,12 +262,11 @@ struct ContentView: View {
             VideoPlayerView(player: player)
                 .frame(maxWidth: .infinity)
                 .aspectRatio(videoAspectRatio, contentMode: .fit)
-                .frame(maxHeight: 320)
+                .frame(maxHeight: 380)
                 .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                 .shadow(color: .black.opacity(0.08), radius: 12, y: 4)
                 .padding(.horizontal, 16)
                 .padding(.top, 8)
-                .layoutPriority(1)
 
             // Time display + scrub
             HStack(spacing: 16) {
@@ -325,6 +325,7 @@ struct ContentView: View {
                 duration: duration,
                 markers: markers,
                 thumbnails: thumbnails,
+                videoBreakpoints: videoBreakpoints,
                 playheadColor: playheadColor,
                 onSeek: { time in
                     player.seek(
@@ -338,7 +339,7 @@ struct ContentView: View {
             Spacer().frame(height: 16)
 
             // Marker editor
-            MarkerEditorView(markers: $markers, currentTime: currentTime)
+            MarkerEditorView(markers: $markers, currentTime: currentTime, videoBreakpoints: videoBreakpoints)
                 .padding(.horizontal, 16)
 
             Spacer(minLength: 8)
@@ -415,89 +416,149 @@ struct ContentView: View {
         )
     }
 
-    private func loadVideo(assetIdentifier: String) {
-        isLoadingVideo = true
-
-        let fetchResult = PHAsset.fetchAssets(withLocalIdentifiers: [assetIdentifier], options: nil)
-        guard let phAsset = fetchResult.firstObject else {
-            isLoadingVideo = false
-            activeAlert = .error(title: "Error", message: "Could not find the selected video.")
-            return
-        }
-
-        self.sourcePhAsset = phAsset
-
+    /// Wraps the callback-based PHImageManager call in an async/await interface.
+    private func loadAVAsset(for phAsset: PHAsset) async throws -> AVAsset {
         let options = PHVideoRequestOptions()
         options.isNetworkAccessAllowed = true
         options.deliveryMode = .highQualityFormat
 
-        PHImageManager.default().requestAVAsset(forVideo: phAsset, options: options) { avAsset, _, _ in
-            DispatchQueue.main.async {
-                self.isLoadingVideo = false
+        return try await withCheckedThrowingContinuation { continuation in
+            PHImageManager.default().requestAVAsset(forVideo: phAsset, options: options) { avAsset, _, _ in
+                if let avAsset = avAsset {
+                    continuation.resume(returning: avAsset)
+                } else {
+                    continuation.resume(throwing: NSError(
+                        domain: "RepCut",
+                        code: -1,
+                        userInfo: [NSLocalizedDescriptionKey: "Could not load video."]
+                    ))
+                }
+            }
+        }
+    }
 
-                guard let avAsset = avAsset else {
-                    self.activeAlert = .error(title: "Error", message: "Could not load the selected video.")
+    private func loadVideos(assetIdentifiers: [String]) {
+        isLoadingVideo = true
+
+        Task {
+            do {
+                // 1. Fetch all PHAssets (preserving picker order)
+                let fetchResult = PHAsset.fetchAssets(withLocalIdentifiers: assetIdentifiers, options: nil)
+                // fetchAssets returns in arbitrary order; re-sort to match picker selection order
+                var assetMap: [String: PHAsset] = [:]
+                fetchResult.enumerateObjects { asset, _, _ in assetMap[asset.localIdentifier] = asset }
+                let phAssets = assetIdentifiers.compactMap { assetMap[$0] }
+
+                guard !phAssets.isEmpty else {
+                    await MainActor.run {
+                        isLoadingVideo = false
+                        activeAlert = .error(title: "Error", message: "Could not find the selected videos.")
+                    }
                     return
                 }
 
-                // Clean up any previous player/observer before setting new one
-                if let old = self.timeObserver {
-                    self.player?.removeTimeObserver(old)
-                    self.timeObserver = nil
+                // 2. Load each AVAsset concurrently would cause PHImageManager contention;
+                //    load sequentially to stay safe.
+                var avAssets: [AVAsset] = []
+                for phAsset in phAssets {
+                    let av = try await loadAVAsset(for: phAsset)
+                    avAssets.append(av)
                 }
-                self.player?.pause()
 
-                self.videoAsset = avAsset
-                let playerItem = AVPlayerItem(asset: avAsset)
-                let newPlayer = AVPlayer(playerItem: playerItem)
-                self.player = newPlayer
-                self.markers = []
-                self.currentTime = 0
-                self.duration = 0
-                self.thumbnails = []
-                self.videoAspectRatio = 16.0 / 9.0
+                // 3. Build AVMutableComposition — concatenate all videos end-to-end
+                let composition = AVMutableComposition()
+                var breakpoints: [Double] = []
+                var cursor = CMTime.zero
 
-                // Load duration
-                Task {
-                    if let d = try? await avAsset.load(.duration) {
-                        await MainActor.run {
-                            self.duration = d.seconds
+                // Use a single shared video/audio track pair for the whole composition
+                let compVideoTrack = composition.addMutableTrack(
+                    withMediaType: .video,
+                    preferredTrackID: kCMPersistentTrackID_Invalid
+                )
+                let compAudioTrack = composition.addMutableTrack(
+                    withMediaType: .audio,
+                    preferredTrackID: kCMPersistentTrackID_Invalid
+                )
+
+                var firstVideoSize: CGSize?
+                var firstTransform: CGAffineTransform?
+
+                for av in avAssets {
+                    let dur = try await av.load(.duration)
+                    breakpoints.append(cursor.seconds)
+                    let range = CMTimeRange(start: .zero, duration: dur)
+
+                    if let srcVideo = try await av.loadTracks(withMediaType: .video).first {
+                        try compVideoTrack?.insertTimeRange(range, of: srcVideo, at: cursor)
+                        // Capture size/transform from first video for aspect ratio
+                        if firstVideoSize == nil {
+                            firstVideoSize = try? await srcVideo.load(.naturalSize)
+                            firstTransform = try? await srcVideo.load(.preferredTransform)
                         }
                     }
-                }
-
-                // Load video aspect ratio from track
-                Task {
-                    if let tracks = try? await avAsset.loadTracks(withMediaType: .video),
-                       let track = tracks.first {
-                        let size = try? await track.load(.naturalSize)
-                        let transform = try? await track.load(.preferredTransform)
-                        if let size = size, let transform = transform {
-                            let transformed = size.applying(transform)
-                            let w = abs(transformed.width)
-                            let h = abs(transformed.height)
-                            if w > 0, h > 0 {
-                                await MainActor.run {
-                                    self.videoAspectRatio = w / h
-                                }
-                            }
-                        }
+                    if let srcAudio = try await av.loadTracks(withMediaType: .audio).first {
+                        try? compAudioTrack?.insertTimeRange(range, of: srcAudio, at: cursor)
                     }
+                    cursor = CMTimeAdd(cursor, dur)
                 }
 
-                // Generate thumbnails
-                Task {
-                    let thumbs = await ThumbnailGenerator.generateThumbnails(
-                        from: avAsset,
-                        count: 20,
-                        size: CGSize(width: 80, height: 112)
-                    )
-                    await MainActor.run {
-                        self.thumbnails = thumbs
+                let totalDuration = cursor.seconds
+
+                // Copy the first video's preferred transform to the composition track so
+                // AVPlayerLayer renders portrait videos correctly (not rotated 90°).
+                if let transform = firstTransform {
+                    compVideoTrack?.preferredTransform = transform
+                }
+
+                // 4. Calculate aspect ratio from first video
+                var aspectRatio: CGFloat = 16.0 / 9.0
+                if let size = firstVideoSize, let transform = firstTransform {
+                    let transformed = size.applying(transform)
+                    let w = abs(transformed.width)
+                    let h = abs(transformed.height)
+                    if w > 0, h > 0 { aspectRatio = w / h }
+                }
+
+                // 5. Set the player first so the editor view appears and the filmstrip
+                //    scroll view gets laid out (non-zero bounds) before thumbnails arrive.
+                await MainActor.run {
+                    if let old = self.timeObserver {
+                        self.player?.removeTimeObserver(old)
+                        self.timeObserver = nil
                     }
+                    self.player?.pause()
+
+                    self.sourcePhAssets = phAssets
+                    self.videoBreakpoints = breakpoints
+                    self.videoAsset = composition
+                    self.markers = []
+                    self.currentTime = 0
+                    self.duration = totalDuration
+                    self.thumbnails = []
+                    self.videoAspectRatio = aspectRatio
+                    self.isLoadingVideo = false
+
+                    let playerItem = AVPlayerItem(asset: composition)
+                    let newPlayer = AVPlayer(playerItem: playerItem)
+                    self.player = newPlayer
+                    self.setupTimeObserver(for: newPlayer)
                 }
 
-                self.setupTimeObserver(for: newPlayer)
+                // 6. Generate thumbnails after the view is visible so the scroll view
+                //    has non-zero bounds when updateUIView fires with the new thumbnails.
+                let thumbs = await ThumbnailGenerator.generateThumbnails(
+                    from: composition,
+                    count: 20,
+                    size: CGSize(width: 80, height: 112)
+                )
+                await MainActor.run {
+                    self.thumbnails = thumbs
+                }
+            } catch {
+                await MainActor.run {
+                    self.isLoadingVideo = false
+                    self.activeAlert = .error(title: "Error", message: error.localizedDescription)
+                }
             }
         }
     }
@@ -529,7 +590,7 @@ struct ContentView: View {
                     isExporting = false
                     self.savedIdentifiers = identifiers
                     if self.alwaysDeleteOriginal {
-                        self.deleteOriginalVideo(clipCount: identifiers.count)
+                        self.deleteOriginalVideos(clipCount: identifiers.count)
                     } else {
                         self.activeAlert = .success(clipCount: identifiers.count)
                     }
@@ -543,10 +604,11 @@ struct ContentView: View {
         }
     }
 
-    private func deleteOriginalVideo(clipCount: Int = 0) {
-        guard let phAsset = sourcePhAsset else { return }
+    private func deleteOriginalVideos(clipCount: Int = 0) {
+        guard !sourcePhAssets.isEmpty else { return }
+        let assetsToDelete = sourcePhAssets
         PHPhotoLibrary.shared().performChanges({
-            PHAssetChangeRequest.deleteAssets([phAsset] as NSArray)
+            PHAssetChangeRequest.deleteAssets(assetsToDelete as NSArray)
         }) { success, error in
             DispatchQueue.main.async {
                 if success {
@@ -558,7 +620,7 @@ struct ContentView: View {
                 } else {
                     self.activeAlert = .error(
                         title: "Error",
-                        message: error?.localizedDescription ?? "Could not delete the original video."
+                        message: error?.localizedDescription ?? "Could not delete the original video(s)."
                     )
                 }
             }
@@ -573,7 +635,8 @@ struct ContentView: View {
         player?.pause()
         player = nil
         videoAsset = nil
-        sourcePhAsset = nil
+        sourcePhAssets = []
+        videoBreakpoints = []
         markers = []
         currentTime = 0
         duration = 0
@@ -587,12 +650,12 @@ struct ContentView: View {
 // MARK: - PHPicker UIKit Wrapper
 
 struct VideoPicker: UIViewControllerRepresentable {
-    var onPick: (String?) -> Void
+    var onPick: ([String]) -> Void
 
     func makeUIViewController(context: Context) -> PHPickerViewController {
         var config = PHPickerConfiguration(photoLibrary: .shared())
         config.filter = .videos
-        config.selectionLimit = 1
+        config.selectionLimit = 0  // 0 = unlimited
         let picker = PHPickerViewController(configuration: config)
         picker.delegate = context.coordinator
         return picker
@@ -605,16 +668,16 @@ struct VideoPicker: UIViewControllerRepresentable {
     }
 
     class Coordinator: NSObject, PHPickerViewControllerDelegate {
-        let onPick: (String?) -> Void
+        let onPick: ([String]) -> Void
 
-        init(onPick: @escaping (String?) -> Void) {
+        init(onPick: @escaping ([String]) -> Void) {
             self.onPick = onPick
         }
 
         func picker(_ picker: PHPickerViewController, didFinishPicking results: [PHPickerResult]) {
             picker.dismiss(animated: true)
-            let identifier = results.first?.assetIdentifier
-            onPick(identifier)
+            let identifiers = results.compactMap(\.assetIdentifier)
+            onPick(identifiers)
         }
     }
 }
