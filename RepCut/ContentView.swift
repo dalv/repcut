@@ -55,7 +55,7 @@ struct ContentView: View {
     @State private var showSettings = false
     @State private var clipPanelExpanded = false
 
-    @AppStorage("alwaysDeleteOriginal") private var alwaysDeleteOriginal = false
+    @AppStorage("alwaysDeleteOriginal") private var alwaysDeleteOriginal = true
 
     var body: some View {
         NavigationStack {
@@ -63,9 +63,11 @@ struct ContentView: View {
                 editorView(player: player)
                     .background(Color(.systemGroupedBackground))
                     .onChange(of: markers.count) { newCount in
-                        if newCount == 0 && clipPanelExpanded {
-                            withAnimation(.spring(response: 0.35, dampingFraction: 0.75)) {
-                                clipPanelExpanded = false
+                        withAnimation(.spring(response: 0.35, dampingFraction: 0.75)) {
+                            if newCount == 0 {
+                                clipPanelExpanded = false   // hide list when all clips deleted
+                            } else if newCount == 1 {
+                                clipPanelExpanded = true    // auto-show on first clip
                             }
                         }
                     }
@@ -306,9 +308,17 @@ struct ContentView: View {
             MarkerEditorView(
                 markers: $markers,
                 currentTime: currentTime,
-                videoBreakpoints: videoBreakpoints,
+                videoBreakpoints: videoBreakpoints, duration: duration,
                 clipPanelExpanded: clipPanelExpanded,
-                onScrub: { scrub(by: $0) }
+                onScrub: { scrub(by: $0) },
+                onSeekTo: { time in
+                    currentTime = time
+                    player.seek(
+                        to: CMTime(seconds: time, preferredTimescale: 600),
+                        toleranceBefore: .zero,
+                        toleranceAfter: .zero
+                    )
+                }
             )
             .padding(.horizontal, 16)
             .animation(.spring(response: 0.35, dampingFraction: 0.75), value: clipPanelExpanded)

@@ -4,8 +4,10 @@ struct MarkerEditorView: View {
     @Binding var markers: [ClipMarker]
     let currentTime: Double
     var videoBreakpoints: [Double] = []
+    var duration: Double = 0
     var clipPanelExpanded: Bool = false
     var onScrub: ((Double) -> Void)?
+    var onSeekTo: ((Double) -> Void)?
 
     var body: some View {
         VStack(spacing: 12) {
@@ -15,7 +17,7 @@ struct MarkerEditorView: View {
                 Button { onScrub?(-1) } label: {
                     HStack(spacing: 2) {
                         Image(systemName: "chevron.backward")
-                            .font(.system(size: 10, weight: .bold))
+                            .font(.system(size: 9, weight: .bold))
                         Text("1s")
                             .font(.system(size: 12, weight: .semibold, design: .rounded))
                     }
@@ -24,13 +26,22 @@ struct MarkerEditorView: View {
                     .background(Capsule().fill(Color(UIColor.tertiarySystemFill)))
                 }
 
-                // Current time
-                Text(ClipMarker.formatTime(currentTime))
-                    .font(.custom("HelveticaNeue-Light", size: 20))
-                    .foregroundStyle(.primary)
-                    .contentTransition(.numericText())
-                    .monospacedDigit()
-                    .frame(width: 60, alignment: .center)
+                // Current time + total duration
+                VStack(spacing: 1) {
+                    Text(ClipMarker.formatTime(currentTime))
+                        .font(.custom("HelveticaNeue-Light", size: 18))
+                        .foregroundStyle(.primary)
+                        .contentTransition(.numericText())
+                        .monospacedDigit()
+                        .lineLimit(1)
+                    if duration > 0 {
+                        Text(ClipMarker.formatTime(duration))
+                            .font(.custom("HelveticaNeue-Light", size: 18))
+                            .foregroundStyle(.quaternary)
+                            .monospacedDigit()
+                    }
+                }
+                .fixedSize(horizontal: true, vertical: false)
 
                 // Scrub forward
                 Button { onScrub?(1) } label: {
@@ -38,7 +49,7 @@ struct MarkerEditorView: View {
                         Text("1s")
                             .font(.system(size: 12, weight: .semibold, design: .rounded))
                         Image(systemName: "chevron.forward")
-                            .font(.system(size: 10, weight: .bold))
+                            .font(.system(size: 9, weight: .bold))
                     }
                     .foregroundStyle(.secondary)
                     .frame(width: 44, height: 44)
@@ -56,7 +67,7 @@ struct MarkerEditorView: View {
                             .font(.system(.subheadline, weight: .semibold))
                     } icon: {
                         Image(systemName: "arrow.right.to.line")
-                            .font(.system(size: 12, weight: .bold))
+                            .font(.system(size: 10, weight: .bold))
                     }
                     .frame(maxWidth: .infinity, minHeight: 44)
                     .foregroundColor(.white)
@@ -73,7 +84,7 @@ struct MarkerEditorView: View {
                             .font(.system(.subheadline, weight: .semibold))
                     } icon: {
                         Image(systemName: "arrow.left.to.line")
-                            .font(.system(size: 12, weight: .bold))
+                            .font(.system(size: 10, weight: .bold))
                     }
                     .frame(maxWidth: .infinity, minHeight: 44)
                     .foregroundColor(.white)
@@ -139,11 +150,12 @@ struct MarkerEditorView: View {
                                 RoundedRectangle(cornerRadius: 12, style: .continuous)
                                     .fill(Color(UIColor.secondarySystemGroupedBackground))
                             )
+                            .contentShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                            .onTapGesture { onSeekTo?(marker.start) }
                         }
                     }
                 }
-                // Show clip 1 fully + peek of clip 2 (~half a row)
-                .frame(maxHeight: markers.count == 1 ? 68 : 110)
+                .frame(height: 138)
                 .transition(.move(edge: .bottom).combined(with: .opacity))
             } else if markers.isEmpty {
                 HStack {
