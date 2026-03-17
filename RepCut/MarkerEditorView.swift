@@ -64,7 +64,7 @@ struct MarkerEditorView: View {
                 Button(action: markStart) {
                     Label {
                         Text("Start clip")
-                            .font(.system(.subheadline, weight: .semibold))
+                            .font(.system(size: 13, weight: .semibold))
                     } icon: {
                         Image(systemName: "arrow.right.to.line")
                             .font(.system(size: 10, weight: .bold))
@@ -73,7 +73,9 @@ struct MarkerEditorView: View {
                     .foregroundColor(.white)
                     .background(
                         RoundedRectangle(cornerRadius: 12, style: .continuous)
-                            .fill(markerColor(for: nextClipIndex))
+                            .fill(canMarkEnd
+                                  ? markerColor(for: nextClipIndex).opacity(0.45)
+                                  : markerColor(for: nextClipIndex))
                     )
                 }
 
@@ -81,7 +83,7 @@ struct MarkerEditorView: View {
                 Button(action: markEnd) {
                     Label {
                         Text("End clip")
-                            .font(.system(.subheadline, weight: .semibold))
+                            .font(.system(size: 13, weight: .semibold))
                     } icon: {
                         Image(systemName: "arrow.left.to.line")
                             .font(.system(size: 10, weight: .bold))
@@ -109,7 +111,7 @@ struct MarkerEditorView: View {
 
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text("Clip \(index + 1)")
-                                        .font(.system(.subheadline, weight: .semibold))
+                                        .font(.system(size: 13, weight: .semibold))
 
                                     Text(marker.formattedRange())
                                         .font(.custom("HelveticaNeue-Light", size: 12))
@@ -125,7 +127,7 @@ struct MarkerEditorView: View {
                                         .foregroundStyle(.green.opacity(0.7))
                                 } else {
                                     Text("...")
-                                        .font(.system(.caption, design: .monospaced, weight: .bold))
+                                        .font(.system(size: 11, weight: .bold, design: .monospaced))
                                         .foregroundStyle(.orange)
                                 }
 
@@ -162,7 +164,7 @@ struct MarkerEditorView: View {
                     Image(systemName: "hand.draw")
                         .foregroundStyle(.quaternary)
                     Text("Scrub to a position and tap Start clip")
-                        .font(.system(.footnote, weight: .regular))
+                        .font(.system(size: 12, weight: .regular))
                         .foregroundStyle(.tertiary)
                 }
                 .padding(.vertical, 8)
