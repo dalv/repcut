@@ -54,6 +54,8 @@ struct ContentView: View {
     @State private var savedIdentifiers: [String] = []
     @State private var showSettings = false
     @State private var clipPanelExpanded = false
+    @State private var navigateToBroadcast = false
+    @State private var navigateToViewer = false
 
     @AppStorage("alwaysDeleteOriginal") private var alwaysDeleteOriginal = true
 
@@ -98,6 +100,12 @@ struct ContentView: View {
                 pickerView
                     .navigationTitle("")
                     .navigationBarHidden(true)
+                    .navigationDestination(isPresented: $navigateToBroadcast) {
+                        BroadcasterView()
+                    }
+                    .navigationDestination(isPresented: $navigateToViewer) {
+                        ViewerView()
+                    }
             }
         }
         .tint(.accent)
@@ -154,11 +162,11 @@ struct ContentView: View {
             )
             .ignoresSafeArea()
 
-            VStack(spacing: 40) {
+            VStack(spacing: 0) {
+                // ── TOP HALF: RepCut ──
                 Spacer()
 
                 VStack(spacing: 20) {
-                    // App icon area
                     ZStack {
                         Circle()
                             .fill(
@@ -183,39 +191,131 @@ struct ContentView: View {
                             .font(.system(.subheadline, weight: .regular))
                             .foregroundStyle(.secondary)
                     }
+
+                    Button {
+                        showPicker = true
+                    } label: {
+                        HStack(spacing: 10) {
+                            Image(systemName: "photo.stack")
+                                .font(.system(size: 16, weight: .medium))
+                            Text("Choose Videos")
+                                .font(.system(.body, weight: .semibold))
+                        }
+                        .foregroundColor(.white)
+                        .frame(width: 220, height: 54)
+                        .background(
+                            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                .fill(
+                                    LinearGradient(
+                                        colors: [.accent, .accentLight],
+                                        startPoint: .leading,
+                                        endPoint: .trailing
+                                    )
+                                )
+                        )
+                        .shadow(color: .accent.opacity(0.3), radius: 12, y: 6)
+                    }
+                    .disabled(isLoadingVideo)
+
+                    if isLoadingVideo {
+                        ProgressView()
+                            .tint(.accent)
+                    }
                 }
 
-                Button {
-                    showPicker = true
-                } label: {
-                    HStack(spacing: 10) {
-                        Image(systemName: "photo.stack")
-                            .font(.system(size: 16, weight: .medium))
-                        Text("Choose Videos")
-                            .font(.system(.body, weight: .semibold))
-                    }
-                    .foregroundColor(.white)
-                    .frame(width: 220, height: 54)
-                    .background(
-                        RoundedRectangle(cornerRadius: 16, style: .continuous)
+                Spacer().frame(maxHeight: 48)
+
+                // ── DIVIDER ──
+                HStack {
+                    VStack { Divider() }
+                    Text("or")
+                        .font(.system(.caption, weight: .medium))
+                        .foregroundStyle(.quaternary)
+                        .padding(.horizontal, 12)
+                    VStack { Divider() }
+                }
+                .padding(.horizontal, 40)
+
+                // ── BOTTOM HALF: Instant Replay ──
+                Spacer().frame(maxHeight: 48)
+
+                VStack(spacing: 20) {
+                    ZStack {
+                        Circle()
                             .fill(
                                 LinearGradient(
-                                    colors: [.accent, .accentLight],
-                                    startPoint: .leading,
-                                    endPoint: .trailing
+                                    colors: [.accent.opacity(0.15), .accent.opacity(0.05)],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
                                 )
                             )
-                    )
-                    .shadow(color: .accent.opacity(0.3), radius: 12, y: 6)
-                }
-                .disabled(isLoadingVideo)
+                            .frame(width: 96, height: 96)
 
-                if isLoadingVideo {
-                    ProgressView()
-                        .tint(.accent)
+                        Image(systemName: "arrow.counterclockwise")
+                            .font(.system(size: 36, weight: .light))
+                            .foregroundStyle(.accent)
+                    }
+
+                    VStack(spacing: 6) {
+                        Text("Instant Replay")
+                            .font(.system(size: 32, weight: .bold, design: .rounded))
+
+                        Text("Instantly review your last rep")
+                            .font(.system(.subheadline, weight: .regular))
+                            .foregroundStyle(.secondary)
+                    }
+
+                    HStack(spacing: 12) {
+                        Button {
+                            navigateToBroadcast = true
+                        } label: {
+                            HStack(spacing: 8) {
+                                Image(systemName: "video.fill")
+                                    .font(.system(size: 14, weight: .medium))
+                                Text("Broadcast")
+                                    .font(.system(.body, weight: .semibold))
+                            }
+                            .foregroundColor(.white)
+                            .frame(width: 160, height: 54)
+                            .background(
+                                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                    .fill(
+                                        LinearGradient(
+                                            colors: [.accent, .accentLight],
+                                            startPoint: .leading,
+                                            endPoint: .trailing
+                                        )
+                                    )
+                            )
+                            .shadow(color: .accent.opacity(0.3), radius: 12, y: 6)
+                        }
+
+                        Button {
+                            navigateToViewer = true
+                        } label: {
+                            HStack(spacing: 8) {
+                                Image(systemName: "play.display")
+                                    .font(.system(size: 14, weight: .medium))
+                                Text("Watch")
+                                    .font(.system(.body, weight: .semibold))
+                            }
+                            .foregroundColor(.white)
+                            .frame(width: 160, height: 54)
+                            .background(
+                                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                    .fill(
+                                        LinearGradient(
+                                            colors: [.accent, .accentLight],
+                                            startPoint: .leading,
+                                            endPoint: .trailing
+                                        )
+                                    )
+                            )
+                            .shadow(color: .accent.opacity(0.3), radius: 12, y: 6)
+                        }
+                    }
                 }
 
-                Spacer()
                 Spacer()
             }
 

@@ -7,6 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		000D6F4F825B9CBB6ACC05E3 /* BroadcasterView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0553D6A03C1A9B19DE7748D /* BroadcasterView.swift */; };
+		94648EA4401DD4B4A20AE714 /* ViewerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B25DFB8D89C3C9D45218C16 /* ViewerView.swift */; };
 		A10000010000000000000001 /* RepCutApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000020000000000000001 /* RepCutApp.swift */; };
 		A10000010000000000000002 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000020000000000000002 /* ContentView.swift */; };
 		A10000010000000000000003 /* VideoPlayerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000020000000000000003 /* VideoPlayerView.swift */; };
@@ -16,9 +18,13 @@
 		A10000010000000000000007 /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000020000000000000007 /* Models.swift */; };
 		A10000010000000000000008 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A10000020000000000000008 /* Assets.xcassets */; };
 		A10000010000000000000009 /* ThumbnailGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000002000000000000000A /* ThumbnailGenerator.swift */; };
+		C1A00001000000000000000A /* MultipeerService.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1A00002000000000000000A /* MultipeerService.swift */; };
+		C1A00001000000000000000B /* CameraPreviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1A00002000000000000000B /* CameraPreviewView.swift */; };
+		C1A00001000000000000000C /* DelayedPlayerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1A00002000000000000000C /* DelayedPlayerView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		1B25DFB8D89C3C9D45218C16 /* ViewerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewerView.swift; sourceTree = "<group>"; };
 		A10000020000000000000001 /* RepCutApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RepCutApp.swift; sourceTree = "<group>"; };
 		A10000020000000000000002 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		A10000020000000000000003 /* VideoPlayerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VideoPlayerView.swift; sourceTree = "<group>"; };
@@ -30,6 +36,11 @@
 		A10000020000000000000009 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		A1000002000000000000000A /* ThumbnailGenerator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThumbnailGenerator.swift; sourceTree = "<group>"; };
 		A10000030000000000000001 /* RepCut.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = RepCut.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		B0553D6A03C1A9B19DE7748D /* BroadcasterView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BroadcasterView.swift; sourceTree = "<group>"; };
+		C1A00002000000000000000A /* MultipeerService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MultipeerService.swift; sourceTree = "<group>"; };
+		C1A00002000000000000000B /* CameraPreviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CameraPreviewView.swift; sourceTree = "<group>"; };
+		C1A00002000000000000000C /* DelayedPlayerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DelayedPlayerView.swift; sourceTree = "<group>"; };
+		C1A00002000000000000000D /* RepCut.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = RepCut.entitlements; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -56,14 +67,20 @@
 			children = (
 				A10000020000000000000001 /* RepCutApp.swift */,
 				A10000020000000000000002 /* ContentView.swift */,
+				B0553D6A03C1A9B19DE7748D /* BroadcasterView.swift */,
+				1B25DFB8D89C3C9D45218C16 /* ViewerView.swift */,
 				A10000020000000000000003 /* VideoPlayerView.swift */,
 				A10000020000000000000004 /* TimelineView.swift */,
 				A10000020000000000000005 /* MarkerEditorView.swift */,
 				A10000020000000000000006 /* VideoExporter.swift */,
 				A10000020000000000000007 /* Models.swift */,
 				A1000002000000000000000A /* ThumbnailGenerator.swift */,
+				C1A00002000000000000000A /* MultipeerService.swift */,
+				C1A00002000000000000000B /* CameraPreviewView.swift */,
+				C1A00002000000000000000C /* DelayedPlayerView.swift */,
 				A10000020000000000000008 /* Assets.xcassets */,
 				A10000020000000000000009 /* Info.plist */,
+				C1A00002000000000000000D /* RepCut.entitlements */,
 			);
 			path = RepCut;
 			sourceTree = "<group>";
@@ -147,12 +164,17 @@
 			files = (
 				A10000010000000000000001 /* RepCutApp.swift in Sources */,
 				A10000010000000000000002 /* ContentView.swift in Sources */,
+				000D6F4F825B9CBB6ACC05E3 /* BroadcasterView.swift in Sources */,
+				94648EA4401DD4B4A20AE714 /* ViewerView.swift in Sources */,
 				A10000010000000000000003 /* VideoPlayerView.swift in Sources */,
 				A10000010000000000000004 /* TimelineView.swift in Sources */,
 				A10000010000000000000005 /* MarkerEditorView.swift in Sources */,
 				A10000010000000000000006 /* VideoExporter.swift in Sources */,
 				A10000010000000000000007 /* Models.swift in Sources */,
 				A10000010000000000000009 /* ThumbnailGenerator.swift in Sources */,
+				C1A00001000000000000000A /* MultipeerService.swift in Sources */,
+				C1A00001000000000000000B /* CameraPreviewView.swift in Sources */,
+				C1A00001000000000000000C /* DelayedPlayerView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -281,14 +303,16 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = RepCut/RepCut.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
-				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Distribution";
-				CODE_SIGN_STYLE = Manual;
+				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 2;
-				DEVELOPMENT_TEAM = "";
-				"DEVELOPMENT_TEAM[sdk=iphoneos*]" = LFDA33NSY8;
+				DEVELOPMENT_TEAM = LFDA33NSY8;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = RepCut/Info.plist;
+				INFOPLIST_KEY_NSCameraUsageDescription = "RepCut needs camera access to broadcast your workout for instant replay.";
+				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "RepCut uses the local network to stream video between devices for instant replay.";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "RepCut needs microphone access to include audio in your broadcast.";
 				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "RepCut needs permission to save trimmed video clips to your photo library.";
 				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "RepCut needs access to your photo library to select videos for editing.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -303,8 +327,6 @@
 				MARKETING_VERSION = 2.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.vladtamas.repcut;
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				PROVISIONING_PROFILE_SPECIFIER = "";
-				"PROVISIONING_PROFILE_SPECIFIER[sdk=iphoneos*]" = RepCut;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;
 				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
@@ -320,14 +342,16 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = RepCut/RepCut.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
-				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Distribution";
-				CODE_SIGN_STYLE = Manual;
+				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 2;
-				DEVELOPMENT_TEAM = "";
-				"DEVELOPMENT_TEAM[sdk=iphoneos*]" = LFDA33NSY8;
+				DEVELOPMENT_TEAM = LFDA33NSY8;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = RepCut/Info.plist;
+				INFOPLIST_KEY_NSCameraUsageDescription = "RepCut needs camera access to broadcast your workout for instant replay.";
+				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "RepCut uses the local network to stream video between devices for instant replay.";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "RepCut needs microphone access to include audio in your broadcast.";
 				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "RepCut needs permission to save trimmed video clips to your photo library.";
 				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "RepCut needs access to your photo library to select videos for editing.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -342,8 +366,6 @@
 				MARKETING_VERSION = 2.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.vladtamas.repcut;
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				PROVISIONING_PROFILE_SPECIFIER = "";
-				"PROVISIONING_PROFILE_SPECIFIER[sdk=iphoneos*]" = RepCut;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;
 				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
