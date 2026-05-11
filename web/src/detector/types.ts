@@ -60,3 +60,42 @@ export const DEFAULT_PARAMS: SegmentationParams = {
   landingOffset: 0.8,
   maxRepDuration: 6,
 };
+
+// ============================================================================
+// Template-matching mode (V1 successor — finds reps by shape similarity to a
+// user-marked example, after pause-detection failed on real footage where the
+// signal never drops to a true pause threshold).
+// ============================================================================
+
+/** The user's marked range that anchors template matching. */
+export interface TemplateRange {
+  startTime: number;
+  endTime: number;
+}
+
+/** A single match found by template matching. */
+export interface Match {
+  id: string;
+  startTime: number;
+  endTime: number;
+  /** Pearson correlation against the (z-score normalized) template. */
+  correlation: number;
+  /** True if this match corresponds to the user's original marked range. */
+  isTemplate: boolean;
+}
+
+/** Tunable parameters for template-matching mode. */
+export interface TemplateParams {
+  /** Minimum Pearson correlation to accept a match. */
+  minCorrelation: number;        // 0–1
+  /** Non-max suppression: minimum gap between matches as a multiple of template length. */
+  nmsWindowMultiplier: number;
+  /** Smoothing applied to the signal before correlation. */
+  smoothingWindow: number;       // seconds
+}
+
+export const DEFAULT_TEMPLATE_PARAMS: TemplateParams = {
+  minCorrelation: 0.4,
+  nmsWindowMultiplier: 1.5,
+  smoothingWindow: 0.3,
+};
