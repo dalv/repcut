@@ -128,6 +128,7 @@ body {
 .legend-swatch--raw      { background: rgba(200,200,200,0.55); }
 .legend-swatch--threshold{ background: rgba(255, 180, 60, 0.85); }
 .legend-swatch--pause    { background: rgba(80, 200, 120, 0.55); }
+.legend-swatch--peak     { background: rgba(255, 100, 180, 0.9); }
 
 /* ---------- Parameter panel ---------- */
 .panel {

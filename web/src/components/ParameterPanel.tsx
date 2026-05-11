@@ -81,6 +81,22 @@ export function ParameterPanel({ params, onChange, onReset }: Props) {
         help="Larger = ignores sub-rep flicker, but blurs short pauses."
         onChange={(v) => set('smoothingWindow', v)}
       />
+      <Slider
+        label="Landing offset"
+        value={params.landingOffset}
+        min={0.0} max={3.0} step={0.05}
+        unit="s"
+        help="How long after the motion peak (= trick execution) to keep, to capture the landing. Excludes post-rep discussion."
+        onChange={(v) => set('landingOffset', v)}
+      />
+      <Slider
+        label="Max rep duration"
+        value={params.maxRepDuration}
+        min={1} max={15} step={0.5}
+        unit="s"
+        help="Hard cap on a rep's clip length from setup to landing."
+        onChange={(v) => set('maxRepDuration', v)}
+      />
     </div>
   );
 }

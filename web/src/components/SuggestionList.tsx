@@ -40,7 +40,7 @@ export function SuggestionList({ suggestions, activeId, currentTime, onPlay }: P
                   <span className="suggestion__dur"> · {(s.endTime - s.startTime).toFixed(2)}s</span>
                 </div>
                 <div className="suggestion__pause">
-                  pause: {fmt(s.pauseStart)} – {fmt(s.pauseEnd)} ({(s.pauseEnd - s.pauseStart).toFixed(2)}s)
+                  setup hold: {fmt(s.pauseStart)}–{fmt(s.pauseEnd)} · peak: {fmt(s.peakTime)}
                 </div>
               </div>
               <button className="btn" onClick={() => onPlay(s)}>Play</button>

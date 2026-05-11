@@ -104,7 +104,7 @@ export function MotionChart({
           strokeDasharray="4 3"
         />
 
-        {/* Suggestion boundary markers */}
+        {/* Suggestion boundary markers + peak indicators */}
         {suggestions.map((s) => (
           <g key={`sug-${s.id}`}>
             <line
@@ -118,6 +118,11 @@ export function MotionChart({
               x2={xForTime(s.endTime)} y2={height}
               stroke="rgba(120, 180, 255, 0.5)"
               strokeWidth={0.5}
+            />
+            {/* Peak marker — small downward triangle at the top of the chart */}
+            <polygon
+              points={`${xForTime(s.peakTime) - 4},2 ${xForTime(s.peakTime) + 4},2 ${xForTime(s.peakTime)},10`}
+              fill="rgba(255, 100, 180, 0.9)"
             />
           </g>
         ))}
@@ -134,7 +139,8 @@ export function MotionChart({
         <span className="legend-swatch legend-swatch--smoothed" /> smoothed motion
         <span className="legend-swatch legend-swatch--raw" /> raw
         <span className="legend-swatch legend-swatch--threshold" /> threshold
-        <span className="legend-swatch legend-swatch--pause" /> detected pause
+        <span className="legend-swatch legend-swatch--pause" /> setup hold (pause)
+        <span className="legend-swatch legend-swatch--peak" /> trick peak
         <span style={{ marginLeft: 'auto', opacity: 0.7 }}>fps: {fps} · click chart to seek</span>
       </div>
     </div>

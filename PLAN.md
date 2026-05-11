@@ -15,13 +15,16 @@ so the user can fine-tune boundaries before exporting.
    action-cam, not panning.
 2. The video shows acro training: 2 people (base + flyer) or 3 (with
    spotter). Multi-person frames are the norm, not an exception.
-3. A "rep" is anchored by a **pause** — the base and flyer holding the
-   trick still for ~1–3 seconds. Between reps the team resets, which is
-   also a (longer) pause.
+3. A rep is anchored by a **setup pause** — base and flyer holding a
+   static position (e.g. the "bird" before a castaway) for ~0.5–2
+   seconds. Then they execute the dynamic trick (handspring, whip, pop,
+   rotation, hand-to-hand transition) and land. Between reps they
+   typically discuss the rep that just happened before resetting for
+   the next setup pause.
 
-Assumption 3 is the load-bearing insight: pauses are the strongest and
-cheapest signal to detect. We don't need to recognize the trick or track
-people — we need to find quiet windows.
+Assumption 3 is the load-bearing insight: setup pauses are the strongest
+and cheapest signal to detect. We don't need to recognize the trick or
+track people — we need to find quiet windows that precede motion.
 
 ## Detection algorithm (V1)
 
@@ -35,13 +38,23 @@ Pure frame-difference motion energy. No ML, no Vision/pose, no audio.
    noise.
 4. Find **sustained low-motion windows**: spans where the smoothed signal
    stays below `median × k` (tunable, start k ≈ 0.2) for at least 0.5 s.
-   Each window is a detected pause.
-5. Suggested clip = interval from the start of pause *N* to the end of
-   pause *N + 1*. This frames each rep as "transition in → held trick →
-   transition out," and lets the user's handles narrow or widen as they
-   prefer per clip.
-6. Filter pauses that are unreasonably long (> ~8 s) — those are water
-   breaks or conversation, not rep boundaries.
+   Each window is a detected setup pause.
+5. For each setup pause, find the **motion peak** in the window between
+   the pause's end and either the next pause's start or a hard rep-
+   duration cap (~6 s). The peak is the trick execution moment.
+6. Suggested clip = `[pause.start, peak + landingOffset]`, where
+   landingOffset (~0.8 s) keeps the landing/recovery without absorbing
+   the post-rep discussion that follows. Capped by max rep duration and
+   the next setup pause's start.
+7. Filter pauses that are unreasonably long (> ~8 s) — those are water
+   breaks or conversation, not setup holds.
+
+Why end at "peak + offset" rather than at the next pause: between the
+landing and the next setup, athletes talk about the rep. Talking
+produces moderate motion (gestures, walking), which is below execution
+motion but above pause threshold — so a "next-pause" boundary would
+swallow the discussion. The peak-plus-offset rule chops the clip at the
+landing, where motion drops sharply, before the chatter starts.
 
 Estimated implementation: ~150 lines of Swift in a `RepDetector` class
 returning `[RepSuggestion]` from an `AVAsset`. Runs on a background `Task`.

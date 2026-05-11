@@ -25,9 +25,11 @@ export interface Suggestion {
   /** Clip boundaries the user would export. */
   startTime: number;
   endTime: number;
-  /** Pause that this suggestion is anchored on. */
+  /** Pause (= setup hold) that this rep is anchored on. */
   pauseStart: number;
   pauseEnd: number;
+  /** Time of the motion peak — the trick execution moment. */
+  peakTime: number;
 }
 
 /** Tunable parameters for V1 pause-based segmentation. */
@@ -40,6 +42,14 @@ export interface SegmentationParams {
   maxPauseDuration: number; // seconds
   /** Moving-average window over the raw energy signal. */
   smoothingWindow: number;  // seconds
+  /**
+   * Seconds to keep AFTER the motion peak. The peak is the trick
+   * execution; this offset captures the landing/recovery without
+   * including post-rep discussion.
+   */
+  landingOffset: number;    // seconds
+  /** Hard upper limit on a single rep's duration (setup → landing). */
+  maxRepDuration: number;   // seconds
 }
 
 export const DEFAULT_PARAMS: SegmentationParams = {
@@ -47,4 +57,6 @@ export const DEFAULT_PARAMS: SegmentationParams = {
   minPauseDuration: 0.5,
   maxPauseDuration: 8,
   smoothingWindow: 0.3,
+  landingOffset: 0.8,
+  maxRepDuration: 6,
 };

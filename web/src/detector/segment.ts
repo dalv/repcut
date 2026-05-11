@@ -33,7 +33,14 @@ export function segmentByPauses(
   const maxSamples = Math.max(minSamples, Math.round(params.maxPauseDuration * signal.fps));
 
   const pauses = findLowMotionRuns(smoothed, threshold, minSamples, maxSamples, signal.fps);
-  const suggestions = pausesToSuggestions(pauses, signal.duration);
+  const suggestions = pausesToSuggestions(
+    pauses,
+    smoothed,
+    signal.fps,
+    signal.duration,
+    params.landingOffset,
+    params.maxRepDuration,
+  );
 
   return { smoothed, threshold, pauses, suggestions };
 }
@@ -98,24 +105,72 @@ function findLowMotionRuns(
 }
 
 /**
- * One suggestion per pause. Boundaries set to the midpoint between this
- * pause and its neighbors, so each clip is the trick-setup → pause →
- * trick-recovery for exactly one rep.
+ * One suggestion per detected pause. A pause is the *setup hold* for a
+ * rep (e.g. the bird position before a castaway) — it marks the START
+ * of the trick, not its midpoint.
+ *
+ * Each rep's arc looks like:
+ *   ░░░░░ pause(i) ░░░░░ ────/\──── peak ────\____  ...discussion...
+ *   setup hold     execution   landing/recovery     (excluded)
+ *   |─────────────── clip[i] ──────────────|
+ *   start = pause(i).start
+ *   end   = peak + landingOffset, capped by maxRepDuration and next pause
+ *
+ * Peak-based termination is the key: motion drops after the landing
+ * but DOESN'T drop to pause-threshold during athlete discussion. So we
+ * can't end clips at "next pause" — we'd swallow the talking. Ending a
+ * fixed offset after the peak chops cleanly at the landing instead.
  */
-function pausesToSuggestions(pauses: Pause[], duration: number): Suggestion[] {
+function pausesToSuggestions(
+  pauses: Pause[],
+  smoothed: Float32Array,
+  fps: number,
+  duration: number,
+  landingOffset: number,
+  maxRepDuration: number,
+): Suggestion[] {
   const suggestions: Suggestion[] = [];
   for (let i = 0; i < pauses.length; i++) {
     const pause = pauses[i];
-    const prev = pauses[i - 1];
     const next = pauses[i + 1];
-    const start = prev ? (prev.end + pause.start) / 2 : 0;
-    const end = next ? (pause.end + next.start) / 2 : duration;
+
+    const start = pause.start;
+
+    // Hard upper bound on the search window: the smaller of next pause's
+    // start, or start + maxRepDuration, or end of video.
+    const searchEnd = Math.min(
+      next ? next.start : duration,
+      start + maxRepDuration,
+      duration,
+    );
+
+    // Find motion peak between the end of the setup hold and the search bound.
+    const searchStart = pause.end;
+    let peakTime = searchStart;
+    let peakValue = -Infinity;
+    const iStart = Math.max(0, Math.floor(searchStart * fps));
+    const iEnd = Math.min(smoothed.length - 1, Math.floor(searchEnd * fps));
+    for (let j = iStart; j <= iEnd; j++) {
+      if (smoothed[j] > peakValue) {
+        peakValue = smoothed[j];
+        peakTime = j / fps;
+      }
+    }
+
+    // End at peak + offset, clamped by all the upper bounds.
+    let end = peakTime + landingOffset;
+    if (next) end = Math.min(end, next.start);
+    end = Math.min(end, start + maxRepDuration, duration);
+    // Safety: never end before the setup pause is over.
+    end = Math.max(end, pause.end);
+
     suggestions.push({
       id: `rep-${i}-${pause.start.toFixed(3)}`,
       startTime: start,
       endTime: end,
       pauseStart: pause.start,
       pauseEnd: pause.end,
+      peakTime,
     });
   }
   return suggestions;
