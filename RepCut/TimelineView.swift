@@ -192,7 +192,7 @@ struct FilmstripScrollView: UIViewRepresentable {
         var lastThumbWidth: CGFloat = 0
         var lastMarkerKey = ""
 
-        var thumbnailViews: [UIImageView] = []
+        var thumbnailCells: [UIView] = []
         var markerViews: [UIView] = []
         var separatorViews: [UIView] = []
         var lastBreakpointKey = ""
@@ -204,33 +204,57 @@ struct FilmstripScrollView: UIViewRepresentable {
         // MARK: Layout
 
         func rebuildThumbnails(in scrollView: UIScrollView, thumbnails: [UIImage], thumbWidth: CGFloat, halfView: CGFloat) {
-            thumbnailViews.forEach { $0.removeFromSuperview() }
-            thumbnailViews = []
+            thumbnailCells.forEach { $0.removeFromSuperview() }
+            thumbnailCells = []
+
+            let height = FilmstripScrollView.thumbHeight
 
             for (i, thumb) in thumbnails.enumerated() {
-                let iv = UIImageView(image: thumb)
-                iv.contentMode = .scaleAspectFill
-                iv.clipsToBounds = true
-                iv.frame = CGRect(
+                // Cell: variable width (zoom-dependent, used for time-mapping along
+                // the timeline). Clips its contents so zoom only affects horizontal
+                // extent of the strip, never the apparent zoom of the frame inside.
+                let cell = UIView(frame: CGRect(
                     x: halfView + CGFloat(i) * thumbWidth,
                     y: 0,
                     width: thumbWidth + 0.5, // Slight overlap to avoid hairline gaps
-                    height: FilmstripScrollView.thumbHeight
+                    height: height
+                ))
+                cell.clipsToBounds = true
+
+                // Inner image: fixed natural-aspect size, centered. Its visual
+                // size stays constant across zoom levels, so the user sees the
+                // same view of each frame regardless of pinch-zoom.
+                let aspect = thumb.size.height > 0 ? thumb.size.width / thumb.size.height : 16.0 / 9.0
+                let naturalWidth = height * aspect
+                let iv = UIImageView(image: thumb)
+                iv.contentMode = .scaleAspectFill
+                iv.frame = CGRect(
+                    x: (cell.bounds.width - naturalWidth) / 2,
+                    y: 0,
+                    width: naturalWidth,
+                    height: height
                 )
-                scrollView.addSubview(iv)
-                thumbnailViews.append(iv)
+                cell.addSubview(iv)
+
+                scrollView.addSubview(cell)
+                thumbnailCells.append(cell)
             }
             lastThumbWidth = thumbWidth
         }
 
         func relayoutThumbnails(thumbWidth: CGFloat, halfView: CGFloat) {
-            for (i, iv) in thumbnailViews.enumerated() {
-                iv.frame = CGRect(
+            let height = FilmstripScrollView.thumbHeight
+            for (i, cell) in thumbnailCells.enumerated() {
+                cell.frame = CGRect(
                     x: halfView + CGFloat(i) * thumbWidth,
                     y: 0,
                     width: thumbWidth + 0.5,
-                    height: FilmstripScrollView.thumbHeight
+                    height: height
                 )
+                // Re-center the inner image; its size stays fixed at natural aspect.
+                if let iv = cell.subviews.first as? UIImageView {
+                    iv.frame.origin.x = (cell.bounds.width - iv.frame.width) / 2
+                }
             }
         }
 
@@ -344,12 +368,12 @@ struct FilmstripScrollView: UIViewRepresentable {
                 gesture.scale = 1.0
                 guard abs(newScale - oldScale) > 0.001 else { return }
 
-                let oldTotalWidth = CGFloat(thumbnailViews.count) * FilmstripScrollView.baseThumbWidth * oldScale
+                let oldTotalWidth = CGFloat(thumbnailCells.count) * FilmstripScrollView.baseThumbWidth * oldScale
                 let fraction = oldTotalWidth > 0 ? scrollView.contentOffset.x / oldTotalWidth : 0
 
                 zoomScale = newScale
                 let newThumbWidth = FilmstripScrollView.baseThumbWidth * newScale
-                let newTotalWidth = CGFloat(thumbnailViews.count) * newThumbWidth
+                let newTotalWidth = CGFloat(thumbnailCells.count) * newThumbWidth
                 let viewWidth = scrollView.bounds.width
                 let newHalfView = viewWidth / 2
 

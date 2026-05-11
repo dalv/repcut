@@ -527,16 +527,25 @@ struct ContentView: View {
         )
     }
 
-    /// Wraps the callback-based PHImageManager call in an async/await interface.
+    /// Loads a PHAsset's video as a flat AVAsset, with any Photos edits (crop,
+    /// trim, rotate) baked in. We go through `requestExportSession` rather than
+    /// `requestAVAsset` because Photos stores edits as a separate
+    /// AVVideoComposition — `requestAVAsset`'s callback has no way to surface
+    /// it, so the crop would be silently dropped when we build the composition.
     private func loadAVAsset(for phAsset: PHAsset) async throws -> AVAsset {
         let options = PHVideoRequestOptions()
         options.isNetworkAccessAllowed = true
         options.deliveryMode = .highQualityFormat
+        options.version = .current  // include user edits
 
-        return try await withCheckedThrowingContinuation { continuation in
-            PHImageManager.default().requestAVAsset(forVideo: phAsset, options: options) { avAsset, _, _ in
-                if let avAsset = avAsset {
-                    continuation.resume(returning: avAsset)
+        let session: AVAssetExportSession = try await withCheckedThrowingContinuation { continuation in
+            PHImageManager.default().requestExportSession(
+                forVideo: phAsset,
+                options: options,
+                exportPreset: AVAssetExportPresetHighestQuality
+            ) { session, _ in
+                if let session = session {
+                    continuation.resume(returning: session)
                 } else {
                     continuation.resume(throwing: NSError(
                         domain: "RepCut",
@@ -546,6 +555,25 @@ struct ContentView: View {
                 }
             }
         }
+
+        let outputURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("RepCut_src_\(UUID().uuidString).mov")
+        session.outputURL = outputURL
+        session.outputFileType = .mov
+
+        await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+            session.exportAsynchronously { continuation.resume() }
+        }
+
+        guard session.status == .completed else {
+            throw session.error ?? NSError(
+                domain: "RepCut",
+                code: -1,
+                userInfo: [NSLocalizedDescriptionKey: "Could not load video."]
+            )
+        }
+
+        return AVURLAsset(url: outputURL)
     }
 
     private func loadVideos(assetIdentifiers: [String]) {
