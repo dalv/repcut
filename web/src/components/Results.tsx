@@ -196,6 +196,8 @@ export function Results({ file, signal, onReset }: Props) {
         duration={signal.duration}
         currentTime={currentTime}
         onSeek={seek}
+        correlationCurve={mode === 'template' ? templateResult?.correlation : undefined}
+        correlationThreshold={mode === 'template' && templateResult ? templateParams.minCorrelation : undefined}
       />
 
       {mode === 'template' ? (

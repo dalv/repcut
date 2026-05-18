@@ -116,6 +116,7 @@ body {
   padding: 8px 12px 12px;
 }
 .chart__svg { display: block; width: 100%; height: 160px; cursor: crosshair; }
+.chart__svg--corr { height: 60px; margin-top: 4px; border-top: 1px solid var(--border); }
 .chart__legend {
   display: flex; gap: 14px; flex-wrap: wrap; align-items: center;
   font-size: 11px; color: var(--fg-dim); padding-top: 4px;
@@ -131,6 +132,7 @@ body {
 .legend-swatch--peak     { background: rgba(255, 100, 180, 0.9); }
 .legend-swatch--template { background: rgba(255, 200, 60, 0.85); }
 .legend-swatch--match    { background: rgba(120, 180, 255, 0.55); }
+.legend-swatch--corr     { background: rgba(120, 240, 200, 0.95); }
 
 /* ---------- Parameter panel ---------- */
 .panel {

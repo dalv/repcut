@@ -27,6 +27,10 @@ interface Props {
   currentTime: number;
   onSeek: (time: number) => void;
   height?: number;
+  /** Optional secondary strip: correlation against the template at every offset. */
+  correlationCurve?: Float32Array;
+  /** Min-correlation threshold for the correlation strip's reference line. */
+  correlationThreshold?: number;
 }
 
 const BAND_FILL: Record<BandKind, string> = {
@@ -58,8 +62,11 @@ export function MotionChart({
   currentTime,
   onSeek,
   height = 160,
+  correlationCurve,
+  correlationThreshold,
 }: Props) {
   const width = 800;
+  const corrHeight = 60;
 
   const { smoothedPath, rawPath, yMax } = useMemo(() => {
     let max = thresholdLine ?? 0;
@@ -92,6 +99,28 @@ export function MotionChart({
     const ratio = (e.clientX - rect.left) / rect.width;
     onSeek(Math.max(0, Math.min(duration, ratio * duration)));
   }
+
+  // ---- Correlation strip (template mode only) ----
+  // Correlation range we display: clip to [-0.2, 1.0] for readability.
+  const corrYMin = -0.2;
+  const corrYMax = 1.0;
+  const corrToY = (v: number) => {
+    const clamped = Math.max(corrYMin, Math.min(corrYMax, v));
+    return corrHeight - ((clamped - corrYMin) / (corrYMax - corrYMin)) * (corrHeight - 4) - 2;
+  };
+  const corrPath = useMemo(() => {
+    if (!correlationCurve || correlationCurve.length === 0) return '';
+    // Each correlation[i] corresponds to a window STARTING at sample i,
+    // i.e. at time i / fps. So the curve covers [0, (length-1)/fps].
+    let d = `M ${(0).toFixed(2)} ${corrToY(correlationCurve[0]).toFixed(2)}`;
+    for (let i = 1; i < correlationCurve.length; i++) {
+      const x = xForTime(i / fps);
+      d += ` L ${x.toFixed(2)} ${corrToY(correlationCurve[i]).toFixed(2)}`;
+    }
+    return d;
+  }, [correlationCurve, fps, duration]);
+  const corrThresholdY = correlationThreshold !== undefined ? corrToY(correlationThreshold) : null;
+  const corrZeroY = corrToY(0);
 
   return (
     <div className="chart">
@@ -145,6 +174,60 @@ export function MotionChart({
           strokeWidth={1.5}
         />
       </svg>
+
+      {correlationCurve && correlationCurve.length > 0 && (
+        <svg
+          viewBox={`0 0 ${width} ${corrHeight}`}
+          preserveAspectRatio="none"
+          className="chart__svg chart__svg--corr"
+          onClick={handleClick}
+        >
+          {/* Zero baseline */}
+          <line
+            x1={0} y1={corrZeroY} x2={width} y2={corrZeroY}
+            stroke="rgba(160, 160, 180, 0.25)"
+            strokeWidth={1}
+          />
+          {/* Threshold line */}
+          {corrThresholdY !== null && (
+            <line
+              x1={0} y1={corrThresholdY} x2={width} y2={corrThresholdY}
+              stroke="rgba(255, 180, 60, 0.85)"
+              strokeWidth={1}
+              strokeDasharray="4 3"
+            />
+          )}
+          {/* Match bands (translucent) — repeat in the correlation strip
+              so users can see WHERE on the correlation landscape the
+              algorithm picked matches. */}
+          {bands
+            .filter(b => b.kind === 'match' || b.kind === 'template')
+            .map((b, i) => {
+              const x = xForTime(b.start);
+              const w = Math.max(1, xForTime(b.end) - x);
+              return (
+                <rect
+                  key={`corr-band-${i}`}
+                  x={x} y={0} width={w} height={corrHeight}
+                  fill={b.kind === 'template' ? 'rgba(255, 200, 60, 0.18)' : 'rgba(120, 180, 255, 0.10)'}
+                />
+              );
+            })}
+          {/* The correlation line itself */}
+          <path d={corrPath} stroke="rgba(120, 240, 200, 0.95)" strokeWidth={1.2} fill="none" />
+          {/* Playhead */}
+          <line
+            x1={xForTime(currentTime)} y1={0}
+            x2={xForTime(currentTime)} y2={corrHeight}
+            stroke="rgba(255, 80, 80, 0.7)"
+            strokeWidth={1}
+          />
+          {/* Y-axis labels */}
+          <text x={4} y={11} fontSize={10} fill="rgba(200,200,200,0.5)">corr 1.0</text>
+          <text x={4} y={corrZeroY + 4} fontSize={10} fill="rgba(200,200,200,0.5)">0</text>
+        </svg>
+      )}
+
       <div className="chart__legend">
         <span className="legend-swatch legend-swatch--smoothed" /> smoothed motion
         <span className="legend-swatch legend-swatch--raw" /> raw
@@ -164,6 +247,9 @@ export function MotionChart({
         )}
         {bands.some(b => b.kind === 'match') && (
           <><span className="legend-swatch legend-swatch--match" /> similar rep</>
+        )}
+        {correlationCurve && correlationCurve.length > 0 && (
+          <><span className="legend-swatch legend-swatch--corr" /> correlation</>
         )}
         <span style={{ marginLeft: 'auto', opacity: 0.7 }}>fps: {fps} · click chart to seek</span>
       </div>
